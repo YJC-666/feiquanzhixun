@@ -237,7 +237,11 @@ class QRInspectionDetector:
             cv2.putText(frame, "Trigger: allowed", (10, 156), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 2)
 
     def is_allowed_data(self, data):
-        return str(data or "").strip().lower() in self.allowed_contents
+        text = str(data or "").strip().lower()
+        if text in self.allowed_contents:
+            return True
+        tokens = [t.strip() for t in text.split(",")]
+        return any(t in self.allowed_contents for t in tokens if t)
 
     def publish_status(self, data, center, tracked=False):
         status = "%s QR content:%s center:%d,%d state:%s trigger:%s" % (

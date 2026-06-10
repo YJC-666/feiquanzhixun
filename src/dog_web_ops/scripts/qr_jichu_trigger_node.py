@@ -51,6 +51,13 @@ class QRJichuTrigger:
         allowed = {str(item).strip().lower() for item in raw if str(item).strip()}
         return allowed or {"mountain", "ray", "right"}
 
+    def _matches_allowed(self, data):
+        text = data.lower()
+        if text in self.allowed_contents:
+            return True
+        tokens = [t.strip() for t in text.split(",")]
+        return any(t in self.allowed_contents for t in tokens if t)
+
     def on_detection(self, msg):
         payload = self.parse_payload(msg.data)
         label = payload.get("label", self.marker_label)
@@ -58,7 +65,7 @@ class QRJichuTrigger:
         x = payload.get("x", None)
         y = payload.get("y", None)
 
-        if data.lower() not in self.allowed_contents:
+        if not self._matches_allowed(data):
             rospy.loginfo_throttle(1.0, "%s ignored QR content=%s", label, data)
             return
 
