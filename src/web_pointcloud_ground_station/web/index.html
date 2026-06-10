@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Web PointCloud Ground Station</title>
+    <link rel="stylesheet" href="./styles.css?v=1" />
+    <script src="./vendor/roslib.min.js?v=1"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <section class="brand-block">
+          <div class="brand-mark">GS</div>
+          <div>
+            <h1>Web PointCloud Ground Station</h1>
+            <p>ROS Noetic · Browser HMI · Industrial Mapping</p>
+          </div>
+        </section>
+        <section class="connection-strip">
+          <div id="conn-pill" class="status-pill offline">离线</div>
+          <label class="ws-field">
+            <span>ROSBridge</span>
+            <input id="ws-url" type="text" autocomplete="off" />
+          </label>
+          <button id="connect-btn" type="button">连接</button>
+          <button id="disconnect-btn" type="button" class="secondary">断开</button>
+        </section>
+      </header>
+
+      <aside class="left-panel panel">
+        <section class="panel-card hero-card">
+          <span class="eyebrow">OPERATOR VIEW</span>
+          <h2>实时点云建图</h2>
+          <p>浏览器跨平台访问，核心体素显示策略继承 Qt/C++ 地面站。</p>
+        </section>
+
+        <section class="panel-card camera-card">
+          <div class="section-title">相机画面</div>
+          <div class="camera-frame">
+            <img id="camera-feed" alt="camera feed" />
+            <span id="camera-empty">No signal</span>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="section-title">话题</div>
+          <label class="field"><span>点云</span><input id="cloud-topic" type="text" /></label>
+          <label class="field"><span>里程计</span><input id="odom-topic" type="text" /></label>
+          <label class="field"><span>相机</span><input id="camera-topic" type="text" /></label>
+          <button id="apply-topics-btn" type="button" class="secondary">应用话题</button>
+        </section>
+      </aside>
+
+      <main class="viewport-panel">
+        <canvas id="viewport"></canvas>
+        <div class="hud top-left">
+          <div class="hud-label">VISIBLE VOXELS</div>
+          <div id="visible-voxels" class="hud-value">0</div>
+        </div>
+        <div class="hud top-right">
+          <div class="hud-label">CAMERA</div>
+          <div id="camera-mode" class="hud-value small">FOLLOW</div>
+        </div>
+        <div class="hud bottom-left">
+          <div class="hud-label">ROBOT POSITION</div>
+          <div id="robot-position" class="hud-value small">x=0.00 y=0.00 z=0.00</div>
+        </div>
+        <div class="hud bottom-right">
+          <div class="hud-label">CONTROL</div>
+          <div class="hud-value mini">左键旋转 · 滚轮缩放 · 双击重置目标</div>
+        </div>
+      </main>
+
+      <aside class="right-panel panel">
+        <section class="panel-card metric-grid">
+          <div class="metric"><span>帧数</span><strong id="frame-count">0</strong></div>
+          <div class="metric"><span>每帧点数</span><strong id="raw-per-frame">0</strong></div>
+          <div class="metric"><span>最近点</span><strong id="recent-points">0</strong></div>
+          <div class="metric"><span>关键帧点</span><strong id="keyframe-points">0</strong></div>
+          <div class="metric"><span>原始累计</span><strong id="raw-total">0</strong></div>
+          <div class="metric"><span>里程计</span><strong id="odom-state">无</strong></div>
+        </section>
+
+        <section class="panel-card">
+          <div class="section-title">显示控制</div>
+          <label class="toggle-line"><input id="follow-toggle" type="checkbox" checked /> 跟随机器人</label>
+          <label class="toggle-line"><input id="front-cull-toggle" type="checkbox" checked /> 仅显示机头前方</label>
+          <label class="toggle-line"><input id="wire-toggle" type="checkbox" checked /> 显示体素线框</label>
+          <button id="reset-view-btn" type="button" class="secondary">重置视角</button>
+          <button id="save-view-btn" type="button" class="secondary">保存视角</button>
+        </section>
+
+        <section class="panel-card sliders">
+          <div class="section-title">渲染参数</div>
+          <label><span>体素尺寸 <b id="voxel-size-value">0.10m</b></span><input id="voxel-size" type="range" min="2" max="20" value="10" /></label>
+          <label><span>渲染预算 <b id="render-budget-value">300000</b></span><input id="render-budget" type="range" min="50000" max="600000" step="25000" value="300000" /></label>
+          <label><span>透明度 <b id="alpha-value">0.82</b></span><input id="alpha" type="range" min="30" max="100" value="82" /></label>
+          <label><span>高度上限 <b id="z-max-value">3.5m</b></span><input id="z-max" type="range" min="100" max="700" value="350" /></label>
+        </section>
+
+        <section class="panel-card log-card">
+          <div class="section-title">事件</div>
+          <div id="event-log" class="event-log"></div>
+        </section>
+      </aside>
+    </div>
+
+    <script type="module" src="./main.js?v=ground-5cm-1"></script>
+  </body>
+</html>

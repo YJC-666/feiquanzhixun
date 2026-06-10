@@ -1,0 +1,13 @@
+<launch>
+  <arg name="device_id" default="0" />
+  <arg name="width" default="640" />
+  <arg name="height" default="480" />
+  <arg name="frame_id" default="camera" />
+
+  <node pkg="camera_driver" type="camera_node.py" name="camera_node" output="screen">
+    <param name="device_id" value="$(arg device_id)" />
+    <param name="width" value="$(arg width)" />
+    <param name="height" value="$(arg height)" />
+    <param name="frame_id" value="$(arg frame_id)" />
+  </node>
+</launch>

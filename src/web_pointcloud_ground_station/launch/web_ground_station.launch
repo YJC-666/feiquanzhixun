@@ -1,0 +1,10 @@
+<launch>
+  <arg name="http_port" default="8080" />
+  <arg name="web_root" default="$(find web_pointcloud_ground_station)/web" />
+
+  <node pkg="web_pointcloud_ground_station" type="static_server.py" name="web_pointcloud_ground_station_server" output="screen">
+    <param name="port" value="$(arg http_port)" />
+    <param name="web_root" value="$(arg web_root)" />
+    <rosparam command="load" file="$(find web_pointcloud_ground_station)/config/view_settings.yaml" />
+  </node>
+</launch>

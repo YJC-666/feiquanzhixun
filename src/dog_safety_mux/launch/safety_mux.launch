@@ -1,0 +1,7 @@
+<launch>
+  <arg name="config" default="$(find dog_safety_mux)/config/safety_mux.yaml" />
+
+  <node pkg="dog_safety_mux" type="safety_mux_node.py" name="dog_safety_mux" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>

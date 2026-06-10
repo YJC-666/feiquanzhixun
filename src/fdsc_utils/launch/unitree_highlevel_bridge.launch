@@ -1,0 +1,7 @@
+<launch>
+  <arg name="config" default="$(find fdsc_utils)/config/unitree_highlevel_bridge.yaml" />
+
+  <node pkg="fdsc_utils" type="unitree_highlevel_bridge" name="unitree_highlevel_bridge" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>

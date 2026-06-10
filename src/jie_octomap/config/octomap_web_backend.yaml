@@ -1,0 +1,34 @@
+topics:
+  cloud: /pointlio/cloud_registered
+  odom: /pointlio/odom
+  global_cloud: /navigation_map_cloud
+  local_cloud: /local_navigation_map_cloud
+  local_obstacle_cloud: /local_navigation_obstacle_cloud
+  status: /web_selection_status
+
+frame_id: camera_init
+map_id: dog_l1_global_pointcloud_map
+robot_radius: 0.28
+
+grid:
+  resolution: 0.20
+  z_min: -1.0
+  z_max: 2.0
+
+local_map:
+  window_size: 3.0
+  window_x: 3.0
+  window_y: 3.0
+  window_z: 3.0
+  publish_rate: 5.0
+  clear_stale_global_in_local_box: true
+  clear_margin: 0.20
+  insert_local_points_into_global: false
+  global_model_exclusion_margin: 0.20
+
+cloud:
+  point_sample_step: 1
+  max_input_points: 180000
+  retained_voxel_size: 0.12
+  max_retained_points: 260000
+  max_retained_publish_points: 90000

@@ -1,0 +1,54 @@
+topics:
+  start: /start_point
+  goal: /goal_point
+  goal_pose: /goal_pose
+  odom: /pointlio/odom
+  map_cloud: /navigation_map_cloud
+  global_map_cloud: /navigation_map_cloud
+  local_map_cloud: /local_navigation_obstacle_cloud
+  path: /planned_path
+  path_marker: /planned_path_marker
+  selection_marker: /selection_markers
+  tracking_marker: /tracking_point_marker
+  start_navigation: /start_navigation
+  stop_navigation: /stop_navigation
+  goal_tolerance: /navigation/goal_tolerance
+  control_mode: /navigation/control_mode
+  manual_cmd: /web_cmd_vel
+  nav_cmd: /nav_cmd_vel
+  status: /web_selection_status
+
+frame_id: camera_init
+
+grid:
+  resolution: 0.20
+
+planner:
+  robot_radius: 0.48
+  obstacle_inflation_radius: 0.55
+  obstacle_vertical_min_height: 0.18
+  obstacle_min_height_above_base: 0.10
+  obstacle_max_height_above_base: 1.60
+  replan_on_map_update: true
+  use_odom_start_for_replan: true
+  search_padding_cells: 40
+  snap_radius_cells: 8
+  max_iterations: 220000
+  max_path_points: 5000
+
+control:
+  require_start_command: false
+  rate: 20.0
+  lookahead_distance: 0.55
+  tracking_point_tolerance: 0.22
+  goal_tolerance: 0.08
+  goal_yaw_tolerance: 0.24
+  linear_gain: 0.75
+  lateral_gain: 0.65
+  heading_gain: 1.15
+  final_yaw_gain: 0.65
+  enable_lateral_motion: false
+  max_linear_x: 0.30
+  max_linear_y: 0.0
+  max_angular_z: 0.65
+  manual_abort_threshold: 0.03

@@ -1,0 +1,28 @@
+topics:
+  cloud: /pointlio/cloud_registered
+  odom: /pointlio/odom
+  camera: /camera/image/compressed
+
+render:
+  recent_frames: 16
+  max_raw_per_frame: 20000
+  keyframe_history: 12
+  keyframe_budget: 1200000
+  keyframe_cell: 0.015
+  render_budget: 300000
+  voxel_size: 0.10
+  outlier_radius: 35.0
+  z_max: 3.5
+  depth_color_min: -0.3
+  depth_color_max: 3.0
+  point_alpha: 0.82
+  wire_alpha: 0.55
+
+motion:
+  stationary_distance: 0.10
+  stationary_time: 3.0
+
+camera:
+  follow_distance: 2.0
+  pitch_deg: 14.0
+  target_z_offset: 0.3

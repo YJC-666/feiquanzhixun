@@ -1,0 +1,74 @@
+server:
+  port: 8080
+  bind: 0.0.0.0
+
+routes:
+  octomap: /home/orangepi/dog_ws/jie_octomap/web
+
+rosbridge:
+  url: ws://localhost:9090
+
+topics:
+  goal_tolerance: /navigation/goal_tolerance
+  control_mode: /navigation/control_mode
+  manual_cmd: /web_cmd_vel
+  start_navigation: /start_navigation
+  stop_navigation: /stop_navigation
+  safety_status: /dog_safety_mux/status
+  unitree_status: /unitree_highlevel/status
+  output_cmd: /cmd_vel
+  nav_cmd: /nav_cmd_vel
+  local_avoidance_config: /dog_safety_mux/local_avoidance_config
+  planned_path: /planned_path
+  cloud: /pointlio/cloud_registered
+  odom: /pointlio/odom
+  camera: /camera/image/compressed
+  octomap_occupied: /octomap_occupied_markers
+  traversable_cells: /traversable_cells_markers
+
+camera_preview:
+  width: 640
+  height: 480
+  jpeg_quality: 75
+  max_fps: 10.0
+  streams:
+    - input_topic: /camera/color/qr_overlay
+      mjpeg_path: /camera/preview_1.mjpg
+      output_topic: /web/camera/preview_1/compressed
+    - input_topic: /camera/depth/image_raw
+      mjpeg_path: /camera/preview_2.mjpg
+      output_topic: /web/camera/preview_2/compressed
+
+qr_inspection:
+  input_topic: /camera/color/image_raw
+  overlay_topic: /camera/color/qr_overlay
+  detection_topic: /inspection/qr_detected
+  status_topic: /inspection/qr_status
+  marker_label: cheak point 1
+  allowed_contents: [mountain, ray, right]
+  max_missing_frames: 5
+  publish_tracked: false
+  jichu_script: /home/orangepi/dog_ws/px4_control_realease_3.3/jichu1.py
+  trigger_once: true
+  trigger_cooldown_sec: 30.0
+
+navigation:
+  settings_path: /home/orangepi/dog_ws/jie_octomap/web/nav_settings.json
+  default_goal_tolerance: 0.08
+  goal_tolerance_topic: /navigation/goal_tolerance
+  control_mode_topic: /navigation/control_mode
+
+local_avoidance:
+  settings_path: /home/orangepi/dog_ws/jie_octomap/web/local_avoidance_settings.json
+
+frames:
+  map: map
+  odom: odom
+  base: aft_mapped
+
+joystick:
+  max_linear_x: 0.30
+  max_linear_y: 0.22
+  max_angular_z: 0.65
+  deadband: 0.12
+  publish_interval_ms: 80

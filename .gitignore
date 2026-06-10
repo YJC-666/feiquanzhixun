@@ -1,0 +1,58 @@
+# ROS build artifacts
+build/
+devel/
+install/
+*.pyc
+__pycache__/
+*.pyo
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+mission_log/
+yesheng_log/
+
+# Media/images (large datasets)
+*.jpg
+*.png
+*.gif
+*.mp4
+*.avi
+px4_control_realease_3.3/da_xiang/
+px4_control_realease_3.3/hou_zi/
+px4_control_realease_3.3/kong_que/
+px4_control_realease_3.3/lang/
+px4_control_realease_3.3/lao_hu/
+px4_control_realease_3.3/tu_pian_1/
+px4_control_realease_3.3/__pycache__/
+
+# Vendor libs
+*.zip
+*.a
+*.so
+*.dll
+*.exe
+
+# Point cloud data
+*.pcd
+
+# SDK prebuilts
+unilidar_sdk/unitree_lidar_sdk/lib/
+unilidar_sdk/unitree_lidar_sdk/win64/
+
+# Camera logs/config
+wpb_home/wpb_home_tutorials/data/*.so
+
+# Config cache
+**/catkin_generated/

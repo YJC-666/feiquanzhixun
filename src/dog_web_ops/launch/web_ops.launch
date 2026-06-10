@@ -1,0 +1,29 @@
+<launch>
+  <arg name="config" default="$(find dog_web_ops)/config/web_ops.yaml" />
+  <arg name="web_root" default="/home/orangepi/dog_ws/jie_octomap/web" />
+  <arg name="launch_rosbridge" default="true" />
+  <arg name="rosbridge_port" default="9090" />
+  <arg name="launch_camera_preview" default="false" />
+  <arg name="launch_qr_inspection" default="true" />
+
+  <node pkg="dog_web_ops" type="static_server.py" name="dog_web_ops_server" output="screen">
+    <param name="web_root" value="$(arg web_root)" />
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+
+  <node if="$(arg launch_camera_preview)" pkg="dog_web_ops" type="camera_preview_node.py" name="camera_preview_compressor" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+
+  <node if="$(arg launch_qr_inspection)" pkg="dog_web_ops" type="qr_inspection_detector_node.py" name="qr_inspection_detector" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+
+  <node if="$(arg launch_qr_inspection)" pkg="dog_web_ops" type="qr_jichu_trigger_node.py" name="qr_jichu_trigger" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+
+  <include if="$(arg launch_rosbridge)" file="$(find rosbridge_server)/launch/rosbridge_websocket.launch">
+    <arg name="port" value="$(arg rosbridge_port)" />
+  </include>
+</launch>

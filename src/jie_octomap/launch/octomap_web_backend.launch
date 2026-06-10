@@ -1,0 +1,7 @@
+<launch>
+  <arg name="config" default="$(find jie_octomap)/config/octomap_web_backend.yaml" />
+
+  <node pkg="jie_octomap" type="octomap_web_backend.py" name="jie_octomap_backend" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>

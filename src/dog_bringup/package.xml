@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>dog_bringup</name>
+  <version>0.0.0</version>
+  <description>Unified bringup for Unitree L1, Point-LIO, safety mux, Unitree high-level bridge and Web ops.</description>
+
+  <maintainer email="orangepi@todo.todo">orangepi</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+
+  <exec_depend>camera_driver</exec_depend>
+  <exec_depend>dog_safety_mux</exec_depend>
+  <exec_depend>dog_web_ops</exec_depend>
+  <exec_depend>fdsc_utils</exec_depend>
+  <exec_depend>point_lio_unilidar</exec_depend>
+  <exec_depend>rosbridge_server</exec_depend>
+  <exec_depend>unitree_lidar_ros</exec_depend>
+</package>

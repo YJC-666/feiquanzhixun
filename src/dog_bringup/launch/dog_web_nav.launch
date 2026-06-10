@@ -1,0 +1,60 @@
+<launch>
+  <arg name="launch_l1" default="true" />
+  <arg name="launch_cloud_filter" default="true" />
+  <arg name="launch_pointlio" default="true" />
+  <arg name="launch_octomap_backend" default="true" />
+  <arg name="launch_navigation" default="true" />
+  <arg name="launch_camera" default="true" />
+  <arg name="launch_safety" default="true" />
+  <arg name="launch_unitree" default="true" />
+  <arg name="launch_web" default="true" />
+  <arg name="launch_qr_inspection" default="true" />
+  <arg name="launch_rosbridge" default="true" />
+  <arg name="rviz" default="false" />
+  <arg name="rosbridge_port" default="9090" />
+
+  <arg name="l1_config" default="$(find unitree_lidar_ros)/config/config.yaml" />
+  <arg name="cloud_filter_config" default="$(find dog_bringup)/config/front_rear_cloud_filter.yaml" />
+  <arg name="octomap_backend_config" default="$(find jie_octomap)/config/octomap_web_backend.yaml" />
+  <arg name="navigation_config" default="$(find octo_planner)/config/nav_params.yaml" />
+  <arg name="safety_config" default="$(find dog_safety_mux)/config/safety_mux.yaml" />
+  <arg name="unitree_config" default="$(find fdsc_utils)/config/unitree_highlevel_bridge.yaml" />
+  <arg name="web_config" default="$(find dog_web_ops)/config/web_ops.yaml" />
+
+  <include if="$(arg launch_l1)" file="$(find unitree_lidar_ros)/launch/run_without_rviz.launch">
+    <arg name="config" value="$(arg l1_config)" />
+  </include>
+
+  <node if="$(arg launch_cloud_filter)" pkg="dog_bringup" type="front_rear_cloud_filter.py" name="front_rear_cloud_filter" output="screen">
+    <rosparam command="load" file="$(arg cloud_filter_config)" />
+  </node>
+
+  <include if="$(arg launch_pointlio)" file="$(find point_lio_unilidar)/launch/mapping_unilidar_l1.launch">
+    <arg name="rviz" value="$(arg rviz)" />
+  </include>
+
+  <include if="$(arg launch_octomap_backend)" file="$(find jie_octomap)/launch/octomap_web_backend.launch">
+    <arg name="config" value="$(arg octomap_backend_config)" />
+  </include>
+
+  <include if="$(arg launch_navigation)" file="$(find octo_planner)/launch/nav.launch">
+    <arg name="config" value="$(arg navigation_config)" />
+  </include>
+
+  <include if="$(arg launch_camera)" file="/home/orangepi/dog_ws/src/ros_astra_camera/launch/gemini.launch" />
+
+  <include if="$(arg launch_safety)" file="$(find dog_safety_mux)/launch/safety_mux.launch">
+    <arg name="config" value="$(arg safety_config)" />
+  </include>
+
+  <include if="$(arg launch_unitree)" file="$(find fdsc_utils)/launch/unitree_highlevel_bridge.launch">
+    <arg name="config" value="$(arg unitree_config)" />
+  </include>
+
+  <include if="$(arg launch_web)" file="$(find dog_web_ops)/launch/web_ops.launch">
+    <arg name="config" value="$(arg web_config)" />
+    <arg name="launch_rosbridge" value="$(arg launch_rosbridge)" />
+    <arg name="launch_qr_inspection" value="$(arg launch_qr_inspection)" />
+    <arg name="rosbridge_port" value="$(arg rosbridge_port)" />
+  </include>
+</launch>

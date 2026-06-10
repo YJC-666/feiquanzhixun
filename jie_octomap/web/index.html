@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>PointCloud Web Planner V53</title>
+    <link rel="stylesheet" href="./styles.css?v=53" />
+    <script src="./vendor/roslib.min.js?v=53"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="panel">
+        <div class="single-map-label">当前地图：全局点云 + 3m 局部避障</div>
+        <button id="reset-view-btn" type="button" class="secondary">重置视角</button>
+
+        <div class="panel-actions">
+          <div id="relocalization-status" class="relocalization-status fail">未收到里程计</div>
+          <button id="set-navigate-btn" type="button" class="secondary action-btn">导航目标</button>
+          <button id="set-start-btn" type="button" class="secondary action-btn">起始点</button>
+          <button id="set-goal-btn" type="button" class="secondary action-btn">目标点</button>
+        </div>
+
+        <div class="navigation-control-card" aria-label="导航和局部避障参数">
+          <div class="settings-tabs" role="tablist" aria-label="参数标签页">
+            <button type="button" class="settings-tab active" data-settings-tab="navigation">导航</button>
+            <button type="button" class="settings-tab" data-settings-tab="local-avoidance">局部避障</button>
+          </div>
+
+          <div class="settings-pane active" data-settings-pane="navigation">
+            <div class="navigation-control-row">
+              <div>
+                <div class="joystick-title">导航控制</div>
+                <div id="nav-mode-status" class="nav-mode-status auto">自动模式</div>
+              </div>
+              <button id="nav-mode-toggle-btn" type="button" class="mode-toggle auto">切到手动</button>
+            </div>
+            <label class="tolerance-field" for="goal-tolerance-input">
+              <span>到达目标容差 m</span>
+              <input id="goal-tolerance-input" type="number" min="0.01" max="2" step="0.01" value="0.08" />
+            </label>
+            <button id="save-goal-tolerance-btn" type="button" class="secondary save-tolerance-btn">保存容差</button>
+            <div id="goal-tolerance-status" class="goal-tolerance-status">当前 0.08m</div>
+          </div>
+
+          <div class="settings-pane" data-settings-pane="local-avoidance">
+            <div class="joystick-title">局部避障参数</div>
+            <div class="avoidance-toggle-row">
+              <label><input type="checkbox" data-avoidance-param="local_planner_enabled" checked /> 启用候选轨迹避障</label>
+              <label><input type="checkbox" data-avoidance-param="stop_without_cloud" checked /> 点云丢失停车</label>
+            </div>
+            <div class="avoidance-grid">
+              <label><span>预瞄时间 s</span><input type="number" step="0.05" min="0.2" max="4" data-avoidance-param="preview_time" value="1.2" /></label>
+              <label><span>停车距离 m</span><input type="number" step="0.01" min="0.05" max="2" data-avoidance-param="stop_distance" value="0.55" /></label>
+              <label><span>预警距离 m</span><input type="number" step="0.01" min="0.1" max="4" data-avoidance-param="warning_distance" value="1.35" /></label>
+              <label><span>旋转停车半径 m</span><input type="number" step="0.01" min="0.05" max="2" data-avoidance-param="rotate_stop_radius" value="0.55" /></label>
+              <label><span>旋转预警半径 m</span><input type="number" step="0.01" min="0.1" max="4" data-avoidance-param="rotate_warning_radius" value="0.95" /></label>
+              <label><span>轨迹预测时长 s</span><input type="number" step="0.05" min="0.4" max="4" data-avoidance-param="trajectory_horizon" value="1.8" /></label>
+              <label><span>轨迹步长 s</span><input type="number" step="0.01" min="0.05" max="0.5" data-avoidance-param="trajectory_dt" value="0.12" /></label>
+              <label><span>碰撞余量 m</span><input type="number" step="0.01" min="0" max="0.5" data-avoidance-param="trajectory_collision_margin" value="0.08" /></label>
+              <label><span>横向余量 m</span><input type="number" step="0.01" min="0" max="0.5" data-avoidance-param="lateral_margin" value="0.15" /></label>
+              <label><span>点云采样步长</span><input type="number" step="1" min="1" max="50" data-avoidance-param="point_sample_step" value="4" /></label>
+              <label><span>最大点数</span><input type="number" step="100" min="100" max="20000" data-avoidance-param="max_points" value="5000" /></label>
+              <label><span>间隙权重</span><input type="number" step="0.1" min="0" max="20" data-avoidance-param="clearance_weight" value="4.0" /></label>
+              <label><span>方向权重</span><input type="number" step="0.1" min="0" max="20" data-avoidance-param="heading_weight" value="2.2" /></label>
+              <label><span>速度权重</span><input type="number" step="0.1" min="0" max="20" data-avoidance-param="speed_weight" value="1.4" /></label>
+              <label><span>平滑权重</span><input type="number" step="0.1" min="0" max="20" data-avoidance-param="smoothness_weight" value="1.2" /></label>
+              <label><span>旋转脱困权重</span><input type="number" step="0.1" min="0" max="20" data-avoidance-param="rotation_escape_weight" value="0.6" /></label>
+            </div>
+            <label class="avoidance-list-field"><span>线速度候选比例</span><input type="text" data-avoidance-param="candidate_linear_scales" value="1.0,0.75,0.5,0.25,0.0" /></label>
+            <label class="avoidance-list-field"><span>yaw 候选偏移 rad/s</span><input type="text" data-avoidance-param="candidate_angular_offsets" value="-0.70,-0.45,-0.25,0.0,0.25,0.45,0.70" /></label>
+            <div class="avoidance-actions">
+              <button id="apply-local-avoidance-btn" type="button" class="secondary">实时下发</button>
+              <button id="save-local-avoidance-btn" type="button" class="secondary save-tolerance-btn">保存局部避障参数</button>
+            </div>
+            <div id="local-avoidance-status" class="goal-tolerance-status">当前参数已载入，修改会自动实时下发。</div>
+          </div>
+        </div>
+
+        <button id="stop-navigation-btn" type="button" class="danger-stop">停止导航</button>
+        <div class="joystick-card" aria-label="手动运动控制">
+          <div class="joystick-title">手动速度 / yaw 控制</div>
+          <div id="motion-joystick" class="joystick-pad">
+            <div class="joystick-cross horizontal"></div>
+            <div class="joystick-cross vertical"></div>
+            <div id="motion-joystick-knob" class="joystick-knob"></div>
+          </div>
+          <div class="rotation-control">
+            <label for="manual-rotation-slider">原地旋转</label>
+            <input id="manual-rotation-slider" type="range" min="-100" max="100" value="0" />
+          </div>
+          <div id="manual-velocity-display" class="manual-velocity-display">speed=0.000 yaw=0.000</div>
+        </div>
+
+        <div class="dog-control-card" aria-label="宇树高层控制">
+          <div class="dog-control-header">
+            <div class="joystick-title">宇树高层控制</div>
+            <div id="dog-mode-status" class="dog-mode-status">等待控制桥状态</div>
+          </div>
+          <div class="dog-mode-grid">
+            <button type="button" class="secondary dog-mode-btn" data-dog-mode="AUTO_STARTUP">自动启动流程</button>
+            <button type="button" class="secondary dog-mode-btn" data-dog-mode="STAND_DOWN">趴下</button>
+            <button type="button" class="secondary dog-mode-btn" data-dog-mode="RECOVERY">恢复</button>
+            <button type="button" class="secondary dog-mode-btn" data-dog-mode="STAND_UP">站起</button>
+            <button type="button" class="secondary dog-mode-btn" data-dog-mode="FORCE_STAND">强制站立</button>
+            <button type="button" class="secondary dog-mode-btn" data-dog-mode="VEL_WALK">行走模式</button>
+          </div>
+          <div class="dog-motion-grid">
+            <button type="button" class="secondary dog-motion-btn" data-motion-speed="0.24" data-motion-yaw="0">前进</button>
+            <button type="button" class="secondary dog-motion-btn" data-motion-speed="-0.18" data-motion-yaw="0">后退</button>
+            <button type="button" class="secondary dog-motion-btn" data-motion-speed="0" data-motion-yaw="0.42">左转</button>
+            <button type="button" class="secondary dog-motion-btn" data-motion-speed="0" data-motion-yaw="-0.42">右转</button>
+            <button type="button" class="secondary dog-motion-btn dog-zero-btn" data-motion-speed="0" data-motion-yaw="0">速度归零</button>
+          </div>
+        </div>
+        <button id="reconnect-btn" type="button" class="secondary">重新连接</button>
+
+        <details id="advanced-settings" class="advanced">
+          <summary>高级设置</summary>
+          <label class="field">
+            <span>ROSBridge 地址</span>
+            <input id="ws-url" type="text" value="" />
+          </label>
+          <button id="connect-btn" type="button">使用自定义地址连接</button>
+        </details>
+
+        <div class="status-block">
+          <div><strong>版本：</strong> <span id="web-version">PointCloud V56</span></div>
+          <div><strong>导航模式：</strong> <span id="nav-mode-summary">自动</span></div>
+          <div><strong>到达容差：</strong> <span id="goal-tolerance-summary">0.08m</span></div>
+          <div><strong>连接：</strong> <span id="conn-status">未连接</span></div>
+          <div><strong>控制桥：</strong> <span id="unitree-status">未收到</span></div>
+          <div><strong>里程计定位：</strong> <span id="robot-tf-status">未解析</span></div>
+          <div><strong>选点：</strong> <span id="selection-status">等待连接。</span></div>
+          <div><strong>地图：</strong> <span id="map-status">尚未加载全局点云地图和局部避障点云。</span></div>
+        </div>
+
+        <ul class="legend">
+          <li><span class="swatch map-cloud"></span> 全局点云地图</li>
+          <li><span class="swatch local-map-cloud"></span> 3m 局部避障点云</li>
+          <li><span class="swatch robot"></span> 机器人</li>
+          <li><span class="swatch path"></span> 规划路径</li>
+          <li><span class="swatch manual-prediction"></span> 局部避障预测路径/终点</li>
+          <li><span class="swatch tracking"></span> 当前跟踪点</li>
+          <li><span class="swatch start"></span> 当前姿态</li>
+          <li><span class="swatch goal"></span> 导航目标</li>
+        </ul>
+      </aside>
+
+      <main class="viewport-wrap">
+        <canvas id="viewport"></canvas>
+        <div class="camera-preview-stack" aria-label="相机预览">
+          <div class="camera-preview-card">
+            <div class="camera-preview-title">QR /camera/color/qr_overlay · 640×480</div>
+            <img id="camera-preview-1" width="640" height="480" alt="camera preview 1" />
+            <div id="camera-preview-status-1" class="camera-preview-status">等待图像</div>
+          </div>
+          <div class="camera-preview-card">
+            <div class="camera-preview-title">Depth /camera/depth/image_raw · 640×480</div>
+            <img id="camera-preview-2" width="640" height="480" alt="camera preview 2" />
+            <div id="camera-preview-status-2" class="camera-preview-status">等待图像</div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div id="navigation-confirm-modal" class="modal-backdrop" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="navigation-confirm-title">
+        <h2 id="navigation-confirm-title">路径规划完成</h2>
+        <p id="navigation-confirm-message"></p>
+        <div class="modal-actions">
+          <button id="navigation-confirm-start" type="button" class="confirm-start">开始导航</button>
+          <button id="navigation-confirm-cancel" type="button" class="confirm-cancel">只显示路线</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./main.js?v=56"></script>
+  </body>
+</html>

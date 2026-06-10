@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dog Web Ops</title>
+  <script src="/pointcloud/vendor/roslib.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060a12;
+      --panel: rgba(11, 18, 32, 0.84);
+      --panel-strong: rgba(13, 27, 49, 0.96);
+      --line: rgba(139, 177, 255, 0.18);
+      --text: #edf5ff;
+      --muted: #93a5bf;
+      --blue: #5db7ff;
+      --green: #63e6a7;
+      --yellow: #ffd166;
+      --red: #ff6b7a;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(45, 93, 178, 0.28), transparent 34%),
+        radial-gradient(circle at 95% 8%, rgba(55, 215, 184, 0.16), transparent 32%),
+        var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    button, input { font: inherit; }
+    button {
+      border: 1px solid var(--line);
+      background: rgba(91, 132, 210, 0.14);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    button:hover { border-color: rgba(93, 183, 255, 0.8); background: rgba(93, 183, 255, 0.18); }
+    button.primary { background: rgba(93, 183, 255, 0.24); border-color: rgba(93, 183, 255, 0.54); }
+    button.danger { background: rgba(255, 107, 122, 0.18); border-color: rgba(255, 107, 122, 0.54); }
+    button.active { background: rgba(99, 230, 167, 0.18); border-color: rgba(99, 230, 167, 0.62); }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(4, 9, 18, 0.64);
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(260px, 420px) minmax(260px, 1fr) minmax(290px, 420px);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(18px);
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .brand h1 { margin: 0; font-size: 24px; letter-spacing: -0.03em; }
+    .brand p { margin: 7px 0 0; color: var(--muted); line-height: 1.45; }
+    .pill {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted); box-shadow: 0 0 18px currentColor; }
+    .dot.connected { background: var(--green); color: var(--green); }
+    .dot.warn { background: var(--yellow); color: var(--yellow); }
+    .dot.bad { background: var(--red); color: var(--red); }
+
+    .connection {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .status-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .topic-list { margin-top: 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; color: var(--muted); font-size: 12px; }
+    .topic-list code { color: #9bdcff; overflow-wrap: anywhere; }
+    .module-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .module-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 9px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+    .module-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .module-topic {
+      margin-top: 5px;
+      color: #9bdcff;
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .module-value {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 18px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ops-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+    .joystick {
+      width: 138px;
+      height: 138px;
+      border-radius: 999px;
+      border: 1px solid rgba(93, 183, 255, 0.28);
+      background:
+        radial-gradient(circle at center, rgba(93, 183, 255, 0.16) 0 24%, transparent 25%),
+        linear-gradient(90deg, transparent 49%, rgba(255,255,255,.08) 50%, transparent 51%),
+        linear-gradient(0deg, transparent 49%, rgba(255,255,255,.08) 50%, transparent 51%),
+        rgba(2, 8, 18, 0.64);
+      position: relative;
+      touch-action: none;
+      user-select: none;
+    }
+    .knob {
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.54);
+      background: radial-gradient(circle at 35% 30%, #ffffff, #72c5ff 34%, #1d5fa4 72%);
+      box-shadow: 0 12px 36px rgba(93, 183, 255, 0.35);
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .control-stack { display: grid; gap: 8px; }
+    .control-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 9px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+    .metric span { display: block; color: var(--muted); font-size: 12px; }
+    .metric strong { display: block; margin-top: 4px; font-size: 17px; }
+    .yaw-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
+    input[type="range"] { accent-color: var(--blue); padding: 0; }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--panel-strong);
+    }
+    .workspace-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(6, 14, 26, 0.84);
+    }
+    .workspace-bar .left, .workspace-bar .right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .frames {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1px;
+      background: var(--line);
+    }
+    .frames.map-only { grid-template-columns: 1fr; }
+    .frames.point-only { grid-template-columns: 1fr; }
+    .pane { min-height: 0; background: #050912; position: relative; }
+    .pane-title {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      z-index: 2;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(3, 8, 16, 0.72);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #c9d9f0;
+      font-size: 12px;
+      pointer-events: none;
+    }
+    iframe { width: 100%; height: 100%; border: 0; display: block; background: #050912; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1180px) {
+      body { overflow: auto; }
+      .app { min-height: 100vh; height: auto; }
+      .topbar { grid-template-columns: 1fr; }
+      .module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .workspace { height: 72vh; }
+      .frames { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .module-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="topbar">
+      <div class="card brand">
+        <span class="pill"><span id="conn-dot" class="dot bad"></span><span id="conn-state">未连接</span></span>
+        <h1>机器狗 Web 一体操作台</h1>
+        <p>建图、OctoMap、路径、摇杆、避障状态都在这个页面里。摇杆输出只走 <code>/web_cmd_vel</code>，最终由安全层裁剪后进入 <code>/cmd_vel</code>。</p>
+      </div>
+
+      <div class="card">
+        <div class="connection">
+          <input id="rosbridge-url" value="ws://localhost:9090" aria-label="ROSBridge URL" />
+          <button id="connect-btn" class="primary">连接</button>
+          <button id="reload-btn">刷新内嵌页</button>
+        </div>
+        <div class="status-row">
+          <span class="pill"><span class="dot" id="safe-dot"></span><span id="safety-state">等待安全层</span></span>
+          <span class="pill">输出 <code id="output-topic">/cmd_vel</code></span>
+          <span class="pill">状态 <code id="status-topic">/dog_safety_mux/status</code></span>
+        </div>
+        <div class="topic-list">
+          <div>点云 <code id="cloud-topic">/pointlio/cloud_registered</code></div>
+          <div>里程计 <code id="odom-topic">/pointlio/odom</code></div>
+          <div>相机 <code id="camera-topic">/camera/image/compressed</code></div>
+          <div>路径 <code id="path-topic">/planned_path</code></div>
+        </div>
+        <div class="module-grid" aria-label="模块互联状态">
+          <div class="module-card">
+            <div class="module-header"><span id="module-lio-dot" class="dot"></span><span>L1 / Point-LIO</span></div>
+            <div id="module-lio-topic" class="module-topic">/pointlio/cloud_registered + /pointlio/odom</div>
+            <div id="module-lio-value" class="module-value">等待数据</div>
+          </div>
+          <div class="module-card">
+            <div class="module-header"><span id="module-map-dot" class="dot"></span><span>OctoMap 建图</span></div>
+            <div id="module-map-topic" class="module-topic">/octomap_occupied_markers</div>
+            <div id="module-map-value" class="module-value">等待地图显示</div>
+          </div>
+          <div class="module-card">
+            <div class="module-header"><span id="module-nav-dot" class="dot"></span><span>导航规划</span></div>
+            <div id="module-nav-topic" class="module-topic">/planned_path</div>
+            <div id="module-nav-value" class="module-value">等待路径</div>
+          </div>
+          <div class="module-card">
+            <div class="module-header"><span id="module-safe-dot" class="dot"></span><span>避障裁剪</span></div>
+            <div id="module-safe-topic" class="module-topic">/dog_safety_mux/status</div>
+            <div id="module-safe-value" class="module-value">等待安全层</div>
+          </div>
+          <div class="module-card">
+            <div class="module-header"><span id="module-cmd-dot" class="dot"></span><span>最终速度</span></div>
+            <div id="module-cmd-topic" class="module-topic">/cmd_vel</div>
+            <div id="module-cmd-value" class="module-value">等待输出</div>
+          </div>
+          <div class="module-card">
+            <div class="module-header"><span id="module-unitree-dot" class="dot"></span><span>宇树高层桥</span></div>
+            <div id="module-unitree-topic" class="module-topic">/unitree_highlevel/status</div>
+            <div id="module-unitree-value" class="module-value">等待控制桥</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card ops-grid">
+        <div id="joy-pad" class="joystick" aria-label="Web joystick">
+          <div id="joy-knob" class="knob"></div>
+        </div>
+        <div class="control-stack">
+          <div class="control-row">
+            <div class="metric"><span>前后 x</span><strong id="vx-value">0.000</strong></div>
+            <div class="metric"><span>横移 y</span><strong id="vy-value">0.000</strong></div>
+            <div class="metric"><span>旋转 wz</span><strong id="wz-value">0.000</strong></div>
+          </div>
+          <div class="yaw-row"><span>左转</span><input id="yaw-slider" type="range" min="-100" max="100" value="0" /><span>右转</span></div>
+          <div class="control-row">
+            <button id="start-nav-btn">开始导航</button>
+            <button id="stop-nav-btn" class="danger">停止/急停</button>
+            <button id="zero-btn">速度归零</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="workspace-bar">
+        <div class="left">
+          <button data-view="split" class="view-btn active">地图 + 点云</button>
+          <button data-view="map" class="view-btn">只看地图</button>
+          <button data-view="pointcloud" class="view-btn">只看点云</button>
+        </div>
+        <div class="right">
+          <span class="pill">OctoMap <code>/octomap/</code></span>
+          <span class="pill">Point-LIO <code>/pointcloud/</code></span>
+        </div>
+      </div>
+      <div id="frames" class="frames">
+        <div id="map-pane" class="pane">
+          <div class="pane-title">OctoMap / 选点 / 路径</div>
+          <iframe id="octomap-frame" src="/octomap/" title="OctoMap Web"></iframe>
+        </div>
+        <div id="point-pane" class="pane">
+          <div class="pane-title">Point-LIO 点云 / 相机</div>
+          <iframe id="pointcloud-frame" src="/pointcloud/" title="PointCloud Ground Station"></iframe>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const defaults = {
+      rosbridge: { url: "ws://localhost:9090" },
+      topics: {
+        manual_cmd: "/web_cmd_vel",
+        start_navigation: "/start_navigation",
+        stop_navigation: "/stop_navigation",
+        safety_status: "/dog_safety_mux/status",
+        unitree_status: "/unitree_highlevel/status",
+        output_cmd: "/cmd_vel",
+        nav_cmd: "/nav_cmd_vel",
+        planned_path: "/planned_path",
+        cloud: "/pointlio/cloud_registered",
+        odom: "/pointlio/odom",
+        camera: "/camera/image/compressed",
+        octomap_occupied: "/octomap_occupied_markers",
+        traversable_cells: "/traversable_cells_markers",
+      },
+      joystick: {
+        max_linear_x: 0.30,
+        max_linear_y: 0.22,
+        max_angular_z: 0.65,
+        deadband: 0.12,
+        publish_interval_ms: 80,
+      },
+    };
+
+    const state = {
+      config: JSON.parse(JSON.stringify(defaults)),
+      ros: null,
+      manualTopic: null,
+      startTopic: null,
+      stopTopic: null,
+      safetyTopic: null,
+      healthTopics: [],
+      healthTimer: null,
+      health: {},
+      joystickPointerId: null,
+      vx: 0,
+      vy: 0,
+      wz: 0,
+      lastPublishMs: 0,
+      repeatTimer: null,
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const connDot = $("conn-dot");
+    const connState = $("conn-state");
+    const safeDot = $("safe-dot");
+    const safetyState = $("safety-state");
+    const urlInput = $("rosbridge-url");
+    const joyPad = $("joy-pad");
+    const joyKnob = $("joy-knob");
+    const yawSlider = $("yaw-slider");
+
+    function mergeConfig(base, incoming) {
+      return {
+        ...base,
+        ...incoming,
+        rosbridge: { ...base.rosbridge, ...(incoming.rosbridge || {}) },
+        topics: { ...base.topics, ...(incoming.topics || {}) },
+        joystick: { ...base.joystick, ...(incoming.joystick || {}) },
+      };
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch("/runtime-config.json", { cache: "no-store" });
+        if (response.ok) {
+          state.config = mergeConfig(defaults, await response.json());
+        }
+      } catch (_err) {
+        state.config = JSON.parse(JSON.stringify(defaults));
+      }
+      applyConfigToDom();
+    }
+
+    function applyConfigToDom() {
+      urlInput.value = state.config.rosbridge.url || defaults.rosbridge.url;
+      $("output-topic").textContent = state.config.topics.output_cmd;
+      $("status-topic").textContent = state.config.topics.safety_status;
+      $("cloud-topic").textContent = state.config.topics.cloud;
+      $("odom-topic").textContent = state.config.topics.odom;
+      $("camera-topic").textContent = state.config.topics.camera;
+      $("path-topic").textContent = state.config.topics.planned_path;
+      $("module-lio-topic").textContent = `${state.config.topics.cloud} + ${state.config.topics.odom}`;
+      $("module-map-topic").textContent = `${state.config.topics.octomap_occupied} + ${state.config.topics.traversable_cells}`;
+      $("module-nav-topic").textContent = state.config.topics.planned_path;
+      $("module-safe-topic").textContent = state.config.topics.safety_status;
+      $("module-cmd-topic").textContent = state.config.topics.output_cmd;
+      $("module-unitree-topic").textContent = state.config.topics.unitree_status;
+    }
+
+    function setConnected(label, cls) {
+      connDot.className = `dot ${cls || ""}`;
+      connState.textContent = label;
+    }
+
+    function setSafetyStatus(text) {
+      safetyState.textContent = text;
+      const normalized = text.toLowerCase();
+      if (normalized.includes("stop") || normalized.includes("急停")) {
+        safeDot.className = "dot bad";
+      } else if (normalized.includes("slow") || normalized.includes("等待") || normalized.includes("no fresh")) {
+        safeDot.className = "dot warn";
+      } else if (normalized.includes("clear") || normalized.includes("idle")) {
+        safeDot.className = "dot connected";
+      } else {
+        safeDot.className = "dot";
+      }
+    }
+
+    function shortText(value, fallback = "等待数据") {
+      const text = String(value || fallback).replace(/\s+/g, " ").trim();
+      return text.length > 96 ? `${text.slice(0, 93)}...` : text;
+    }
+
+    function ageText(lastMs) {
+      if (!lastMs) return "未收到";
+      const ageSec = Math.max(0, (Date.now() - lastMs) / 1000);
+      return `${ageSec.toFixed(ageSec < 10 ? 1 : 0)}s 前`;
+    }
+
+    function markHealth(key, value) {
+      state.health[key] = { lastMs: Date.now(), value };
+      refreshHealth();
+    }
+
+    function healthFresh(key, timeoutMs) {
+      const item = state.health[key];
+      return Boolean(item && Date.now() - item.lastMs <= timeoutMs);
+    }
+
+    function setModuleStatus(module, className, value) {
+      $(`module-${module}-dot`).className = `dot ${className || ""}`;
+      $(`module-${module}-value`).textContent = shortText(value);
+    }
+
+    function textStatusClass(text, fresh) {
+      if (!fresh) return "warn";
+      const normalized = String(text || "").toLowerCase();
+      if (normalized.includes("stop") || normalized.includes("error") || normalized.includes("failed") || normalized.includes("急停")) {
+        return "bad";
+      }
+      if (normalized.includes("slow") || normalized.includes("waiting") || normalized.includes("等待") || normalized.includes("no fresh")) {
+        return "warn";
+      }
+      return "connected";
+    }
+
+    function refreshHealth() {
+      const cloud = state.health.cloud;
+      const odom = state.health.odom;
+      const cloudFresh = healthFresh("cloud", 2500);
+      const odomFresh = healthFresh("odom", 2500);
+      if (cloudFresh && odomFresh) {
+        setModuleStatus("lio", "connected", `${cloud.value} | ${odom.value}`);
+      } else if (cloud || odom) {
+        setModuleStatus("lio", "warn", `点云 ${ageText(cloud && cloud.lastMs)} / 里程计 ${ageText(odom && odom.lastMs)}`);
+      } else {
+        setModuleStatus("lio", "", "等待 L1 / Point-LIO");
+      }
+
+      const occupied = state.health.octomap;
+      const traversable = state.health.traversable;
+      const mapFresh = healthFresh("octomap", 5000) || healthFresh("traversable", 5000);
+      if (mapFresh) {
+        setModuleStatus("map", "connected", [occupied && occupied.value, traversable && traversable.value].filter(Boolean).join(" | "));
+      } else if (occupied || traversable) {
+        setModuleStatus("map", "warn", `地图 ${ageText((occupied || traversable).lastMs)}`);
+      } else {
+        setModuleStatus("map", "", "等待 OctoMap Marker");
+      }
+
+      const path = state.health.path;
+      if (healthFresh("path", 5000)) {
+        setModuleStatus("nav", "connected", path.value);
+      } else if (path) {
+        setModuleStatus("nav", "warn", `路径 ${ageText(path.lastMs)}`);
+      } else {
+        setModuleStatus("nav", "", "等待规划路径");
+      }
+
+      const safety = state.health.safety;
+      if (safety) {
+        setModuleStatus("safe", textStatusClass(safety.value, healthFresh("safety", 2000)), safety.value);
+      } else {
+        setModuleStatus("safe", "", "等待安全层");
+      }
+
+      const output = state.health.output;
+      if (healthFresh("output", 1000)) {
+        setModuleStatus("cmd", "connected", output.value);
+      } else if (output) {
+        setModuleStatus("cmd", "warn", `输出 ${ageText(output.lastMs)}`);
+      } else {
+        setModuleStatus("cmd", "", "等待 /cmd_vel");
+      }
+
+      const unitree = state.health.unitree;
+      if (unitree) {
+        setModuleStatus("unitree", textStatusClass(unitree.value, healthFresh("unitree", 3000)), unitree.value);
+      } else {
+        setModuleStatus("unitree", "", "等待宇树高层桥");
+      }
+    }
+
+    function messageSummary(key, msg) {
+      if (key === "cloud") {
+        const width = Number(msg.width || 0);
+        const height = Number(msg.height || 1);
+        return `点云 ${(width * height).toLocaleString()} 点`;
+      }
+      if (key === "odom") {
+        const pos = msg.pose && msg.pose.pose && msg.pose.pose.position;
+        if (!pos) return "里程计在线";
+        return `里程计 x=${Number(pos.x || 0).toFixed(2)} y=${Number(pos.y || 0).toFixed(2)}`;
+      }
+      if (key === "path") {
+        const count = Array.isArray(msg.poses) ? msg.poses.length : 0;
+        return `路径 ${count} 点`;
+      }
+      if (key === "output") {
+        const linear = msg.linear || {};
+        const angular = msg.angular || {};
+        return `vx=${Number(linear.x || 0).toFixed(2)} vy=${Number(linear.y || 0).toFixed(2)} wz=${Number(angular.z || 0).toFixed(2)}`;
+      }
+      if (key === "octomap" || key === "traversable") {
+        const count = Array.isArray(msg.points) ? msg.points.length : 0;
+        return `${key === "octomap" ? "占据" : "可通行"} ${count} 格`;
+      }
+      if (typeof msg.data === "string") return msg.data;
+      return "在线";
+    }
+
+    function subscribeHealth(key, topicName, messageType) {
+      if (!topicName) return;
+      const topic = new ROSLIB.Topic({ ros: state.ros, name: topicName, messageType });
+      topic.subscribe((msg) => markHealth(key, messageSummary(key, msg)));
+      state.healthTopics.push(topic);
+    }
+
+    function connectRos() {
+      if (!window.ROSLIB) {
+        setConnected("roslib 未加载", "bad");
+        return;
+      }
+      if (state.ros) {
+        state.ros.close();
+        state.ros = null;
+      }
+
+      const url = urlInput.value.trim() || defaults.rosbridge.url;
+      setConnected("连接中", "warn");
+      const ros = new ROSLIB.Ros({ url });
+      state.ros = ros;
+
+      ros.on("connection", () => {
+        setConnected("已连接", "connected");
+        bindTopics();
+      });
+      ros.on("error", () => setConnected("连接错误", "bad"));
+      ros.on("close", () => setConnected("已断开", "bad"));
+    }
+
+    function bindTopics() {
+      state.healthTopics.forEach((topic) => topic.unsubscribe());
+      state.healthTopics = [];
+      state.health = {};
+      if (state.healthTimer) {
+        window.clearInterval(state.healthTimer);
+      }
+      state.healthTimer = window.setInterval(refreshHealth, 500);
+
+      const topics = state.config.topics;
+      state.manualTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.manual_cmd, messageType: "geometry_msgs/Twist" });
+      state.startTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.start_navigation, messageType: "std_msgs/Bool" });
+      state.stopTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.stop_navigation, messageType: "std_msgs/Bool" });
+      state.safetyTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.safety_status, messageType: "std_msgs/String" });
+      state.safetyTopic.subscribe((msg) => {
+        const text = msg.data || "";
+        setSafetyStatus(text);
+        markHealth("safety", text);
+      });
+      state.healthTopics.push(state.safetyTopic);
+
+      subscribeHealth("cloud", topics.cloud, "sensor_msgs/PointCloud2");
+      subscribeHealth("odom", topics.odom, "nav_msgs/Odometry");
+      subscribeHealth("path", topics.planned_path, "nav_msgs/Path");
+      subscribeHealth("output", topics.output_cmd, "geometry_msgs/Twist");
+      subscribeHealth("unitree", topics.unitree_status, "std_msgs/String");
+      subscribeHealth("octomap", topics.octomap_occupied, "visualization_msgs/Marker");
+      subscribeHealth("traversable", topics.traversable_cells, "visualization_msgs/Marker");
+      refreshHealth();
+    }
+
+    function makeTwist(vx, vy, wz) {
+      return new ROSLIB.Message({
+        linear: { x: vx, y: vy, z: 0 },
+        angular: { x: 0, y: 0, z: wz },
+      });
+    }
+
+    function updateVelocityDom() {
+      $("vx-value").textContent = state.vx.toFixed(3);
+      $("vy-value").textContent = state.vy.toFixed(3);
+      $("wz-value").textContent = state.wz.toFixed(3);
+    }
+
+    function publishManual(force = false) {
+      updateVelocityDom();
+      if (!state.manualTopic) {
+        return;
+      }
+      const now = Date.now();
+      if (!force && now - state.lastPublishMs < state.config.joystick.publish_interval_ms) {
+        return;
+      }
+      state.lastPublishMs = now;
+      state.manualTopic.publish(makeTwist(state.vx, state.vy, state.wz));
+    }
+
+    function publishZero() {
+      state.vx = 0;
+      state.vy = 0;
+      state.wz = 0;
+      yawSlider.value = "0";
+      resetKnob();
+      publishManual(true);
+      stopRepeatIfIdle();
+    }
+
+    function startRepeat() {
+      if (state.repeatTimer) return;
+      state.repeatTimer = window.setInterval(() => {
+        if (Math.abs(state.vx) > 1e-4 || Math.abs(state.vy) > 1e-4 || Math.abs(state.wz) > 1e-4) {
+          publishManual(true);
+        }
+      }, 100);
+    }
+
+    function stopRepeatIfIdle() {
+      if (!state.repeatTimer) return;
+      if (Math.abs(state.vx) > 1e-4 || Math.abs(state.vy) > 1e-4 || Math.abs(state.wz) > 1e-4) return;
+      window.clearInterval(state.repeatTimer);
+      state.repeatTimer = null;
+    }
+
+    function curve(value, maxSpeed) {
+      const deadband = state.config.joystick.deadband;
+      const sign = Math.sign(value);
+      const magnitude = Math.abs(value);
+      if (magnitude < deadband) return 0;
+      return sign * ((magnitude - deadband) / Math.max(1e-6, 1 - deadband)) * maxSpeed;
+    }
+
+    function resetKnob() {
+      joyKnob.style.left = "50%";
+      joyKnob.style.top = "50%";
+    }
+
+    function updateJoystickFromEvent(event) {
+      const rect = joyPad.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const radius = rect.width / 2;
+      let dx = event.clientX - cx;
+      let dy = event.clientY - cy;
+      const distance = Math.hypot(dx, dy);
+      if (distance > radius) {
+        dx = dx / distance * radius;
+        dy = dy / distance * radius;
+      }
+
+      joyKnob.style.left = `${50 + (dx / radius) * 50}%`;
+      joyKnob.style.top = `${50 + (dy / radius) * 50}%`;
+
+      const nx = -dy / radius;
+      const ny = -dx / radius;
+      state.vx = curve(nx, state.config.joystick.max_linear_x);
+      state.vy = curve(ny, state.config.joystick.max_linear_y);
+      publishManual();
+      startRepeat();
+    }
+
+    joyPad.addEventListener("pointerdown", (event) => {
+      state.joystickPointerId = event.pointerId;
+      joyPad.setPointerCapture(event.pointerId);
+      updateJoystickFromEvent(event);
+    });
+    joyPad.addEventListener("pointermove", (event) => {
+      if (state.joystickPointerId !== event.pointerId) return;
+      updateJoystickFromEvent(event);
+    });
+    joyPad.addEventListener("pointerup", (event) => {
+      if (state.joystickPointerId !== event.pointerId) return;
+      state.joystickPointerId = null;
+      state.vx = 0;
+      state.vy = 0;
+      resetKnob();
+      publishManual(true);
+      stopRepeatIfIdle();
+    });
+    joyPad.addEventListener("pointercancel", publishZero);
+
+    yawSlider.addEventListener("input", () => {
+      state.wz = Number(yawSlider.value) / 100 * state.config.joystick.max_angular_z;
+      publishManual(true);
+      startRepeat();
+    });
+    yawSlider.addEventListener("change", () => {
+      if (Number(yawSlider.value) === 0) stopRepeatIfIdle();
+    });
+
+    $("connect-btn").addEventListener("click", connectRos);
+    $("zero-btn").addEventListener("click", publishZero);
+    $("stop-nav-btn").addEventListener("click", () => {
+      if (state.stopTopic) state.stopTopic.publish(new ROSLIB.Message({ data: true }));
+      publishZero();
+      setSafetyStatus("急停已发送");
+    });
+    $("start-nav-btn").addEventListener("click", () => {
+      if (state.startTopic) state.startTopic.publish(new ROSLIB.Message({ data: true }));
+    });
+    $("reload-btn").addEventListener("click", () => {
+      $("octomap-frame").contentWindow.location.reload();
+      $("pointcloud-frame").contentWindow.location.reload();
+    });
+
+    document.querySelectorAll(".view-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset.view;
+        document.querySelectorAll(".view-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        const frames = $("frames");
+        frames.className = "frames";
+        $("map-pane").classList.toggle("hidden", view === "pointcloud");
+        $("point-pane").classList.toggle("hidden", view === "map");
+        if (view === "map") frames.classList.add("map-only");
+        if (view === "pointcloud") frames.classList.add("point-only");
+      });
+    });
+
+    loadConfig().then(() => {
+      updateVelocityDom();
+      setSafetyStatus("等待安全层");
+      connectRos();
+    });
+  </script>
+</body>
+</html>

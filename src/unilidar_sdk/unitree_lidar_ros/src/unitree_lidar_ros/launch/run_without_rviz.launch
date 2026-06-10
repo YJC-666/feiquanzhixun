@@ -1,0 +1,7 @@
+<launch>
+  <arg name="config" default="$(find unitree_lidar_ros)/config/config.yaml" />
+
+  <node pkg="unitree_lidar_ros" type="unitree_lidar_ros_node" name="unitree_lidar_ros_node" output="screen" respawn="true">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>

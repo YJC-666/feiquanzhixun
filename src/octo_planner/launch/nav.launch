@@ -1,0 +1,11 @@
+<launch>
+  <arg name="config" default="$(find octo_planner)/config/nav_params.yaml" />
+
+  <node pkg="octo_planner" type="jie_path_node.py" name="jie_path_node" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+
+  <node pkg="octo_planner" type="d1_controller_node.py" name="d1_controller" output="screen">
+    <rosparam command="load" file="$(arg config)" />
+  </node>
+</launch>

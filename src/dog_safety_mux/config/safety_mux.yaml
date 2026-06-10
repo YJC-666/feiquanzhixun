@@ -1,0 +1,56 @@
+topics:
+  manual_cmd: /web_cmd_vel
+  nav_cmd: /nav_cmd_vel
+  cloud: /unilidar/cloud_front_only
+  odom: /pointlio/odom
+  manual_prediction_path: /manual_prediction_path
+  local_avoidance_config: /dog_safety_mux/local_avoidance_config
+  output_cmd: /cmd_vel
+  status: /dog_safety_mux/status
+
+frames:
+  base_frame: unilidar_lidar
+  assume_cloud_in_base_frame: true
+  use_odom_fallback: false
+
+control:
+  rate: 20.0
+  command_timeout: 0.35
+  cloud_timeout: 0.8
+  stop_without_cloud: true
+  max_linear_x: 0.35
+  max_linear_y: 0.0
+  max_angular_z: 0.8
+
+footprint:
+  length: 0.80
+  width: 0.50
+  z_min: -0.35
+  z_max: 0.85
+  lateral_margin: 0.15
+
+avoidance:
+  preview_time: 1.2
+  stop_distance: 0.55
+  warning_distance: 1.35
+  rotate_stop_radius: 0.55
+  rotate_warning_radius: 0.95
+  point_sample_step: 4
+  max_points: 5000
+  front_only_obstacles: true
+  front_min_x: 0.0
+  local_planner_enabled: true
+  trajectory_horizon: 1.8
+  trajectory_dt: 0.12
+  candidate_linear_scales: [1.0, 0.75, 0.50, 0.25, 0.0]
+  candidate_angular_offsets: [-0.70, -0.45, -0.25, 0.0, 0.25, 0.45, 0.70]
+  trajectory_collision_margin: 0.08
+  clearance_weight: 4.0
+  heading_weight: 2.2
+  speed_weight: 1.4
+  smoothness_weight: 1.2
+  rotation_escape_weight: 0.6
+
+prediction:
+  horizon: 2.5
+  steps: 28

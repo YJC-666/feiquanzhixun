@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="fdsc_utils" type="dog_nav" name="dog_nav" output="screen" />
+</launch>

@@ -1,0 +1,10 @@
+topics:
+  input_cloud: /unilidar/cloud
+  pointlio_cloud: /unilidar/cloud_pointlio_filtered
+  front_cloud: /unilidar/cloud_front_only
+
+filter:
+  front_axis: x
+  front_min: 0.0
+  rear_far_distance: 0.30
+  keep_rear_far_for_pointlio: true
