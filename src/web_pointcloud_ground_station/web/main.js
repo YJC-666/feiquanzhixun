@@ -62,6 +62,7 @@ const ui = {
   applyTopicsBtn: $("apply-topics-btn"),
   cameraFrame: document.querySelector(".camera-frame"),
   cameraFeed: $("camera-feed"),
+  detectionFeed: $("detection-feed"),
   visibleVoxels: $("visible-voxels"),
   cameraMode: $("camera-mode"),
   robotPosition: $("robot-position"),
@@ -412,6 +413,15 @@ function subscribeAll() {
   });
   cameraTopic.subscribe(handleCameraImage);
 
+  const detectionTopic = new ROSLIB.Topic({
+    ros: state.ros,
+    name: "/web/camera/detection/compressed",
+    messageType: "sensor_msgs/CompressedImage",
+    throttle_rate: 160,
+    queue_length: 1,
+  });
+  detectionTopic.subscribe(handleDetectionImage);
+
   const candidatesTopic = new ROSLIB.Topic({
     ros: state.ros,
     name: "/local_planner_candidates",
@@ -439,7 +449,7 @@ function subscribeAll() {
   });
   statusTopic.subscribe(handleSafetyStatus);
 
-  state.subscriptions = [cloudTopic, odomTopic, cameraTopic, candidatesTopic, safetyBoxTopic, statusTopic];
+  state.subscriptions = [cloudTopic, odomTopic, cameraTopic, detectionTopic, candidatesTopic, safetyBoxTopic, statusTopic];
   logEvent(`订阅 ${state.topics.cloud} / ${state.topics.odom} / ${state.topics.camera}`);
 }
 
@@ -508,6 +518,13 @@ function handleCameraImage(msg) {
   const mime = String(msg.format || "jpeg").toLowerCase().includes("png") ? "image/png" : "image/jpeg";
   ui.cameraFeed.src = `data:${mime};base64,${uint8ToBase64(bytes)}`;
   ui.cameraFrame.classList.add("active");
+}
+
+function handleDetectionImage(msg) {
+  const bytes = normalizeBinaryData(msg.data);
+  if (!bytes || bytes.length === 0) return;
+  const mime = String(msg.format || "jpeg").toLowerCase().includes("png") ? "image/png" : "image/jpeg";
+  ui.detectionFeed.src = `data:${mime};base64,${uint8ToBase64(bytes)}`;
 }
 
 function handlePointCloud(msg) {

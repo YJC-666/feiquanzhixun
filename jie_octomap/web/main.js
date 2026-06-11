@@ -33,7 +33,6 @@ const goalToleranceSummary = document.getElementById("goal-tolerance-summary");
 const resetViewBtn = document.getElementById("reset-view-btn");
 const joystickPad = document.getElementById("motion-joystick");
 const joystickKnob = document.getElementById("motion-joystick-knob");
-const manualRotationSlider = document.getElementById("manual-rotation-slider");
 const manualVelocityDisplay = document.getElementById("manual-velocity-display");
 const unitreeStatus = document.getElementById("unitree-status");
 const dogModeStatus = document.getElementById("dog-mode-status");
@@ -48,14 +47,17 @@ const dogMotionButtons = Array.from(document.querySelectorAll("[data-motion-spee
 const cameraPreviewImages = [
   document.getElementById("camera-preview-1"),
   document.getElementById("camera-preview-2"),
+  document.getElementById("camera-preview-3"),
 ];
 const cameraPreviewStatuses = [
   document.getElementById("camera-preview-status-1"),
   document.getElementById("camera-preview-status-2"),
+  document.getElementById("camera-preview-status-3"),
 ];
 const cameraPreviewPaths = [
   "/camera/preview_1.mjpg",
   "/camera/preview_2.mjpg",
+  "/camera/preview_3.mjpg",
 ];
 
 function defaultRosbridgeUrl() {
@@ -1078,9 +1080,6 @@ function publishZeroVelocity() {
   joystickCurrentLinearX = 0;
   joystickCurrentLinearY = 0;
   joystickCurrentAngularZ = 0;
-  if (manualRotationSlider) {
-    manualRotationSlider.value = "0";
-  }
   publishManualVelocity(true);
   stopManualRepeatTimerIfIdle();
 }
@@ -1089,9 +1088,6 @@ function setManualVelocity(linearX, angularZ, force = true) {
   joystickCurrentLinearX = linearX;
   joystickCurrentLinearY = 0;
   joystickCurrentAngularZ = angularZ;
-  if (manualRotationSlider) {
-    manualRotationSlider.value = String(Math.round(-angularZ / joystickMaxAngularZ * 100));
-  }
   publishManualVelocity(force);
   if (manualVelocityIsActive()) {
     ensureManualRepeatTimer();
@@ -1210,9 +1206,10 @@ function updateJoystickFromEvent(event, forcePublish = false) {
   joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
   const normalizedY = dy / maxOffset;
-  const linearX = applyJoystickSpeedCurve(-normalizedY, joystickMaxLinearX);
-  joystickCurrentLinearX = linearX;
+  const normalizedX = dx / maxOffset;
+  joystickCurrentLinearX = applyJoystickSpeedCurve(-normalizedY, joystickMaxLinearX);
   joystickCurrentLinearY = 0;
+  joystickCurrentAngularZ = applyJoystickSpeedCurve(-normalizedX, joystickMaxAngularZ);
   publishManualVelocity(forcePublish);
 }
 
@@ -1245,41 +1242,16 @@ function endJoystickControl(event) {
   joystickActivePointerId = null;
   joystickCurrentLinearX = 0;
   joystickCurrentLinearY = 0;
+  joystickCurrentAngularZ = 0;
   resetJoystickKnob();
   publishManualVelocity(true);
   stopManualRepeatTimerIfIdle();
-  setSelectionStatus(
-    joystickCurrentAngularZ === 0
-      ? "手动运动已停止，已发送零速度。"
-      : "平移控制已停止，旋转滑杆仍在发送角速度。"
-  );
+  setSelectionStatus("手动运动已停止，已发送零速度。");
   if (joystickKnob.hasPointerCapture(event.pointerId)) {
     joystickKnob.releasePointerCapture(event.pointerId);
   }
 }
 
-function updateManualRotationFromSlider(forcePublish = false) {
-  if (!manualRotationSlider) {
-    return;
-  }
-  const sliderValue = Number(manualRotationSlider.value || 0);
-  const normalized = Math.max(-1, Math.min(1, sliderValue / 100));
-  joystickCurrentAngularZ = applyJoystickSpeedCurve(-normalized, joystickMaxAngularZ);
-  publishManualVelocity(forcePublish);
-  if (manualVelocityIsActive()) {
-    ensureManualRepeatTimer();
-  } else {
-    stopManualRepeatTimerIfIdle();
-  }
-}
-
-function resetManualRotationSlider(forcePublish = true) {
-  if (!manualRotationSlider) {
-    return;
-  }
-  manualRotationSlider.value = "0";
-  updateManualRotationFromSlider(forcePublish);
-}
 
 function hideNavigationConfirmModal() {
   navigationConfirmModal.hidden = true;
@@ -1846,15 +1818,7 @@ joystickKnob.addEventListener("pointerdown", startJoystickControl);
 joystickKnob.addEventListener("pointermove", moveJoystickControl);
 joystickKnob.addEventListener("pointerup", endJoystickControl);
 joystickKnob.addEventListener("pointercancel", endJoystickControl);
-if (manualRotationSlider) {
-  manualRotationSlider.addEventListener("input", () => {
-    updateManualRotationFromSlider(true);
-  });
-  manualRotationSlider.addEventListener("change", () => resetManualRotationSlider(true));
-  manualRotationSlider.addEventListener("pointerup", () => resetManualRotationSlider(true));
-  manualRotationSlider.addEventListener("pointercancel", () => resetManualRotationSlider(true));
-  manualRotationSlider.addEventListener("touchend", () => resetManualRotationSlider(true), { passive: true });
-}
+
 navigationConfirmStartBtn.addEventListener("click", () => resolveNavigationConfirmation(true));
 navigationConfirmCancelBtn.addEventListener("click", () => resolveNavigationConfirmation(false));
 resetViewBtn.addEventListener("click", resetMapView);

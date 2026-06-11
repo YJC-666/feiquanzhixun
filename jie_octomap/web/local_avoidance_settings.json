@@ -1,0 +1,38 @@
+{
+  "candidate_angular_offsets": [
+    -0.7,
+    -0.45,
+    -0.25,
+    0.0,
+    0.25,
+    0.45,
+    0.7
+  ],
+  "candidate_linear_scales": [
+    1.0,
+    0.75,
+    0.5,
+    0.25,
+    0.0
+  ],
+  "clearance_weight": 4.0,
+  "front_min_x": 0.0,
+  "front_only_obstacles": true,
+  "heading_weight": 2.2,
+  "lateral_margin": 0.15,
+  "local_planner_enabled": true,
+  "max_points": 5000,
+  "point_sample_step": 10,
+  "preview_time": 0.8,
+  "rotate_stop_radius": 0.55,
+  "rotate_warning_radius": 0.95,
+  "rotation_escape_weight": 0.6,
+  "smoothness_weight": 1.2,
+  "speed_weight": 1.4,
+  "stop_distance": 0.16,
+  "stop_without_cloud": true,
+  "trajectory_collision_margin": 0.08,
+  "trajectory_dt": 0.12,
+  "trajectory_horizon": 1.8,
+  "warning_distance": 3.0
+}

@@ -70,6 +70,8 @@ class LocalPlannerNode:
         self.max_linear_y = float(rospy.get_param("~control/max_linear_y", 0.22))
         self.max_angular_z = float(rospy.get_param("~control/max_angular_z", 0.65))
         self.manual_abort_threshold = float(rospy.get_param("~control/manual_abort_threshold", 0.03))
+        self.squeeze_distance = float(rospy.get_param("~control/squeeze_distance", 0.20))
+        self.squeeze_gain = float(rospy.get_param("~control/squeeze_gain", 0.35))
 
         # Local planning parameters
         self.resolution = float(rospy.get_param("~local_planner/resolution", 0.20))
@@ -244,6 +246,7 @@ class LocalPlannerNode:
             path = list(self.active_path)
             target_index = self.target_index
             odom_pose = self.odom_pose
+            local_obstacles = set(self.local_obstacles)
 
         if odom_pose is None:
             rospy.logwarn_throttle(2.0, "local_planner waiting for odom: %s", self.odom_topic)
@@ -294,11 +297,9 @@ class LocalPlannerNode:
             self.linear_gain * max(0.0, distance_to_target) * heading_speed_scale,
             self.max_linear_x,
         )
-        cmd.linear.y = (
-            clamp(self.lateral_gain * ry, self.max_linear_y)
-            if self.enable_lateral_motion
-            else 0.0
-        )
+        squeeze_vy = self.compute_squeeze_vy(x, y, yaw, local_obstacles)
+        tracking_vy = self.lateral_gain * ry if self.enable_lateral_motion else 0.0
+        cmd.linear.y = clamp(tracking_vy + squeeze_vy, self.max_linear_y)
         cmd.angular.z = clamp(self.heading_gain * heading_error, self.max_angular_z)
 
         if target_index >= len(path) - 1 and goal_dist <= max(
@@ -309,10 +310,8 @@ class LocalPlannerNode:
                 self.linear_gain * max(0.0, rx) * final_speed_scale * 0.45,
                 self.max_linear_x * 0.55,
             )
-            cmd.linear.y = (
-                clamp(self.lateral_gain * ry * 0.45, self.max_linear_y * 0.55)
-                if self.enable_lateral_motion
-                else 0.0
+            cmd.linear.y = clamp(
+                tracking_vy * 0.45 + squeeze_vy, self.max_linear_y * 0.55
             )
             cmd.angular.z = clamp(self.final_yaw_gain * goal_yaw_error, self.max_angular_z * 0.65)
 
@@ -603,6 +602,36 @@ class LocalPlannerNode:
                 break
             index += 1
         return index
+
+    # ---------- Squeeze lateral avoidance ----------
+
+    def compute_squeeze_vy(self, robot_x, robot_y, robot_yaw, obstacle_cells):
+        """Compute lateral repulsive velocity from nearby obstacles within squeeze_distance."""
+        if not obstacle_cells:
+            return 0.0
+        left_force = 0.0
+        right_force = 0.0
+        cos_yaw = math.cos(robot_yaw)
+        sin_yaw = math.sin(robot_yaw)
+        for (ox, oy) in obstacle_cells:
+            wx = ox * self.resolution
+            wy = oy * self.resolution
+            dx = wx - robot_x
+            dy = wy - robot_y
+            rx = cos_yaw * dx + sin_yaw * dy
+            ry = -sin_yaw * dx + cos_yaw * dy
+            if abs(ry) > self.squeeze_distance or rx < -0.1:
+                continue
+            dist = math.hypot(rx, ry)
+            if dist < 1e-3:
+                continue
+            weight = (self.squeeze_distance - abs(ry)) / max(self.squeeze_distance, 1e-3)
+            force = weight / max(dist, 0.05)
+            if ry > 0:
+                right_force += force
+            else:
+                left_force += force
+        return (left_force - right_force) * self.squeeze_gain
 
     # ---------- State management ----------
 

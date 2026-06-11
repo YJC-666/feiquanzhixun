@@ -37,7 +37,9 @@ camera_preview:
       output_topic: /web/camera/preview_1/compressed
     - input_topic: /camera/depth/image_raw
       mjpeg_path: /camera/preview_2.mjpg
-      output_topic: /web/camera/preview_2/compressed
+    - input_topic: /yolov8_rknn/detection_image
+      mjpeg_path: /camera/preview_3.mjpg
+      output_topic: /web/camera/detection/compressed
 
 qr_inspection:
   input_topic: /camera/color/image_raw
@@ -71,4 +73,4 @@ joystick:
   max_linear_y: 0.22
   max_angular_z: 0.65
   deadband: 0.12
-  publish_interval_ms: 80
+  publish_interval_ms: 25

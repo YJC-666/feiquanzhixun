@@ -142,6 +142,10 @@ class CameraPreviewCompressor:
         return cv2.resize(image, (self.max_width, target_height), interpolation=cv2.INTER_AREA)
 
     @staticmethod
+    def get_preview_param(key, default):
+        return rospy.get_param("~camera_preview/" + key, default)
+
+    @staticmethod
     def clamp(value, low, high):
         return max(low, min(high, value))
 

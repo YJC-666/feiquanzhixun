@@ -12,7 +12,7 @@ import urllib.parse
 import cv2
 import numpy as np
 import rospy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage, Image
 from std_msgs.msg import Float64, String
 
 
@@ -29,6 +29,14 @@ class CameraMjpegStreamer:
         self.sequence_by_input = {}
         self.streams = self.load_streams()
         self.stream_by_path = {stream["mjpeg_path"]: stream for stream in self.streams}
+
+        self.output_publishers = {}
+        self.output_by_input = {}
+        for stream in self.streams:
+            ot = stream.get("output_topic", "")
+            if ot:
+                self.output_publishers[ot] = rospy.Publisher(ot, CompressedImage, queue_size=1)
+                self.output_by_input.setdefault(stream["input_topic"], []).append(ot)
 
         input_topics = sorted({stream["input_topic"] for stream in self.streams})
         for input_topic in input_topics:
@@ -59,8 +67,9 @@ class CameraMjpegStreamer:
                     continue
                 input_topic = str(item.get("input_topic", default_input_topic)).strip()
                 mjpeg_path = str(item.get("mjpeg_path", "/camera/preview_%d.mjpg" % (index + 1))).strip()
+                output_topic = str(item.get("output_topic", "")).strip()
                 if input_topic and mjpeg_path:
-                    streams.append({"input_topic": input_topic, "mjpeg_path": self.normalize_path(mjpeg_path)})
+                    streams.append({"input_topic": input_topic, "mjpeg_path": self.normalize_path(mjpeg_path), "output_topic": output_topic})
         if streams:
             return streams
         return [
@@ -105,6 +114,18 @@ class CameraMjpegStreamer:
             self.sequence_by_input[input_topic] = self.sequence_by_input.get(input_topic, 0) + 1
             self.latest_by_input[input_topic] = (self.sequence_by_input[input_topic], encoded.tobytes())
             self.condition.notify_all()
+
+        output_topics = self.output_by_input.get(input_topic, [])
+        if output_topics:
+            compressed = CompressedImage()
+            compressed.header = msg.header
+            compressed.header.stamp = now
+            compressed.format = "jpeg"
+            compressed.data = encoded.tobytes()
+            for ot in output_topics:
+                pub = self.output_publishers.get(ot)
+                if pub:
+                    pub.publish(compressed)
 
     @staticmethod
     def image_to_bgr(msg):

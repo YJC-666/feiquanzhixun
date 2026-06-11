@@ -133,13 +133,13 @@ sleep 4
 
 # ── 7. 宇树高层桥 ──
 echo ""
-echo "[7/8] 启动宇树高层控制桥..."
+echo "[7/9] 启动宇树高层控制桥..."
 roslaunch fdsc_utils unitree_highlevel_bridge.launch &
 sleep 3
 
 # ── 8. Web 地面站 ──
 echo ""
-echo "[8/8] 启动 Web 地面站..."
+echo "[8/9] 启动 Web 地面站..."
 roslaunch dog_web_ops web_ops.launch &
 sleep 3
 

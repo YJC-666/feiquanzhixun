@@ -81,15 +81,11 @@
 
         <button id="stop-navigation-btn" type="button" class="danger-stop">停止导航</button>
         <div class="joystick-card" aria-label="手动运动控制">
-          <div class="joystick-title">手动速度 / yaw 控制</div>
+          <div class="joystick-title">手动控制：前进/后退/左转/右转</div>
           <div id="motion-joystick" class="joystick-pad">
             <div class="joystick-cross horizontal"></div>
             <div class="joystick-cross vertical"></div>
             <div id="motion-joystick-knob" class="joystick-knob"></div>
-          </div>
-          <div class="rotation-control">
-            <label for="manual-rotation-slider">原地旋转</label>
-            <input id="manual-rotation-slider" type="range" min="-100" max="100" value="0" />
           </div>
           <div id="manual-velocity-display" class="manual-velocity-display">speed=0.000 yaw=0.000</div>
         </div>
@@ -161,6 +157,11 @@
             <div class="camera-preview-title">Depth /camera/depth/image_raw · 640×480</div>
             <img id="camera-preview-2" width="640" height="480" alt="camera preview 2" />
             <div id="camera-preview-status-2" class="camera-preview-status">等待图像</div>
+          </div>
+          <div class="camera-preview-card">
+            <div class="camera-preview-title">YOLOv8 /yolov8_rknn/detection_image · 640×480</div>
+            <img id="camera-preview-3" width="640" height="480" alt="camera preview 3" />
+            <div id="camera-preview-status-3" class="camera-preview-status">等待图像</div>
           </div>
         </div>
       </main>

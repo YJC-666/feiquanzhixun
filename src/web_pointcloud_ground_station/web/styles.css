@@ -233,8 +233,16 @@ h2 {
   font-size: 13px;
 }
 
+.camera-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
 .camera-frame {
   position: relative;
+  flex: 1;
+  min-width: 0;
   display: grid;
   place-items: center;
   min-height: 190px;
@@ -262,6 +270,66 @@ h2 {
 #camera-empty {
   color: rgba(236, 247, 251, 0.35);
   font-weight: 800;
+}
+
+.detection-frame {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px solid rgba(114, 164, 184, 0.18);
+  border-radius: 14px;
+  background: #020507;
+}
+
+.detection-frame img {
+  width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  display: block;
+}
+
+#detection-empty {
+  color: rgba(236, 247, 251, 0.35);
+  font-weight: 800;
+  display: block;
+}
+
+.detection-frame img[src=""],
+.detection-frame img:not([src]) {
+  display: none;
+}
+
+.detection-frame img[src=""] ~ #detection-empty,
+.detection-frame img:not([src]) ~ #detection-empty {
+  display: block;
+}
+
+.detection-frame img[src] ~ #detection-empty {
+  display: none;
+}
+
+.mjpeg-frame {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px solid rgba(114, 164, 184, 0.18);
+  border-radius: 14px;
+  background: #020507;
+}
+
+.mjpeg-frame img {
+  width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  display: block;
 }
 
 .viewport-panel {

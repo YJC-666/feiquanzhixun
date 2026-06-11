@@ -397,7 +397,7 @@
         max_linear_y: 0.22,
         max_angular_z: 0.65,
         deadband: 0.12,
-        publish_interval_ms: 80,
+        publish_interval_ms: 25,
       },
     };
 
@@ -419,6 +419,8 @@
       controlMode: "manual",
       lastPublishMs: 0,
       repeatTimer: null,
+      connected: false,
+      pendingSpeed: null,
     };
 
     const $ = (id) => document.getElementById(id);
@@ -634,11 +636,12 @@
       state.ros = ros;
 
       ros.on("connection", () => {
+        state.connected = true;
         setConnected("已连接", "connected");
         bindTopics();
       });
-      ros.on("error", () => setConnected("连接错误", "bad"));
-      ros.on("close", () => setConnected("已断开", "bad"));
+      ros.on("error", () => { state.connected = false; setConnected("连接错误", "bad"); });
+      ros.on("close", () => { state.connected = false; setConnected("已断开", "bad"); });
     }
 
     function bindTopics() {
@@ -672,6 +675,14 @@
       subscribeHealth("octomap", topics.octomap_occupied, "visualization_msgs/Marker");
       subscribeHealth("traversable", topics.traversable_cells, "visualization_msgs/Marker");
       refreshHealth();
+
+      if (state.pendingSpeed) {
+        state.vx = state.pendingSpeed.vx;
+        state.vy = state.pendingSpeed.vy;
+        state.wz = state.pendingSpeed.wz;
+        state.pendingSpeed = null;
+        publishManual(true);
+      }
     }
 
     function makeTwist(vx, vy, wz) {
@@ -689,7 +700,8 @@
 
     function publishManual(force = false) {
       updateVelocityDom();
-      if (!state.manualTopic) {
+      if (!state.manualTopic || !state.connected) {
+        state.pendingSpeed = { vx: state.vx, vy: state.vy, wz: state.wz };
         return;
       }
       const now = Date.now();
@@ -716,7 +728,7 @@
         if (Math.abs(state.vx) > 1e-4 || Math.abs(state.vy) > 1e-4 || Math.abs(state.wz) > 1e-4) {
           publishManual(true);
         }
-      }, 100);
+      }, 30);
     }
 
     function stopRepeatIfIdle() {
@@ -767,6 +779,7 @@
       if (state.controlMode !== "manual") return;
       state.joystickPointerId = event.pointerId;
       joyPad.setPointerCapture(event.pointerId);
+      state.lastPublishMs = 0;
       updateJoystickFromEvent(event);
     });
     joyPad.addEventListener("pointermove", (event) => {
@@ -805,6 +818,7 @@
         $("mode-auto-btn").classList.remove("active", "auto-active");
         joyPad.classList.remove("disabled");
         yawSlider.disabled = false;
+        publishManual(true);
       } else {
         $("mode-auto-btn").classList.add("active", "auto-active");
         $("mode-manual-btn").classList.remove("active", "auto-active");

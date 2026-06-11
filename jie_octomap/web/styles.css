@@ -28,20 +28,70 @@ body {
   color: var(--text);
   font-family: "Segoe UI", "Noto Sans", sans-serif;
 }
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  height: 38px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(11, 18, 23, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+.tab-btn {
+  min-width: 90px;
+  height: 100%;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 16px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-content {
+  display: none;
+  flex: 1;
+  min-height: 0;
+}
+.tab-content.active {
+  display: grid;
+}
+
+.pointcloud-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
 
 .shell {
   display: grid;
   grid-template-areas: "panel viewport";
   grid-template-columns: 300px minmax(0, 1fr);
-  min-height: 100vh;
-  height: 100vh;
-  width: 100vw;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
 }
 
 .panel {
   grid-area: panel;
   min-width: 0;
-  max-height: 100vh;
+  max-height: 100%;
   overflow-y: auto;
   padding: 18px 16px;
   background: var(--panel);
@@ -351,22 +401,6 @@ button {
 
 .joystick-knob.active {
   background: radial-gradient(circle at 35% 30%, #fff7bc, #ffbd45 45%, #b85b00);
-}
-
-.rotation-control {
-  margin-top: 14px;
-}
-
-.rotation-control label {
-  display: block;
-  color: var(--muted);
-  font-size: 0.86rem;
-  margin-bottom: 6px;
-}
-
-.rotation-control input[type="range"] {
-  width: 100%;
-  accent-color: #ffbd45;
 }
 
 .manual-velocity-display {

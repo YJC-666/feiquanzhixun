@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Web PointCloud Ground Station</title>
-    <link rel="stylesheet" href="./styles.css?v=1" />
+    <link rel="stylesheet" href="./styles.css?v=2" />
     <script src="./vendor/roslib.min.js?v=1"></script>
   </head>
   <body>
@@ -40,9 +40,18 @@
 
         <section class="panel-card camera-card">
           <div class="section-title">相机画面</div>
-          <div class="camera-frame">
-            <img id="camera-feed" alt="camera feed" />
-            <span id="camera-empty">No signal</span>
+          <div class="camera-row">
+            <div class="camera-frame">
+              <img id="camera-feed" alt="camera feed" />
+              <span id="camera-empty">No signal</span>
+            </div>
+            <div class="detection-frame">
+              <img id="detection-feed" alt="detection feed" />
+              <span id="detection-empty">No detection</span>
+            </div>
+            <div class="mjpeg-frame">
+              <img src="/camera/preview_3.mjpg" alt="yolov8 mjpeg" />
+            </div>
           </div>
         </section>
 
