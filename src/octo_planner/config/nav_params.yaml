@@ -1,3 +1,4 @@
+# === 通用 topics ===
 topics:
   start: /start_point
   goal: /goal_point
@@ -5,17 +6,13 @@ topics:
   odom: /pointlio/odom
   map_cloud: /navigation_map_cloud
   global_map_cloud: /navigation_map_cloud
-  local_map_cloud: /local_navigation_obstacle_cloud
-  path: /planned_path
-  path_marker: /planned_path_marker
-  selection_marker: /selection_markers
-  tracking_marker: /tracking_point_marker
+  local_map_cloud: /local_navigation_map_cloud
   start_navigation: /start_navigation
   stop_navigation: /stop_navigation
   goal_tolerance: /navigation/goal_tolerance
   control_mode: /navigation/control_mode
   manual_cmd: /web_cmd_vel
-  nav_cmd: /nav_cmd_vel
+  nav_cmd: /cmd_vel
   status: /web_selection_status
 
 frame_id: camera_init
@@ -23,6 +20,7 @@ frame_id: camera_init
 grid:
   resolution: 0.20
 
+# === 全局规划器 ===
 planner:
   robot_radius: 0.48
   obstacle_inflation_radius: 0.55
@@ -36,6 +34,29 @@ planner:
   max_iterations: 220000
   max_path_points: 5000
 
+# global_planner 话题: 只规划全局路径
+topics_path: /global_plan
+
+# === 局部规划器 ===
+local_planner:
+  resolution: 0.20
+  box_half_size: 1.5         # 3×3×3m 盒子的半边长
+  robot_radius: 0.48
+  obstacle_inflation_radius: 0.55
+  obstacle_vertical_min_height: 0.18
+  obstacle_min_height_above_base: 0.10
+  obstacle_max_height_above_base: 1.60
+  pointcloud_min_distance: 0.15  # 机器人周围排除点云的距离 (m)，避免自身干扰
+  max_iterations: 8000
+  replan_rate: 5.0           # 局部重规划频率 (Hz)
+  snap_radius_cells: 6
+  local_plan_lookahead: 3.0  # 局部路径前视距离 (m)
+
+# global_plan 输入, local_plan 输出
+topics_global_path: /global_plan
+topics_local_plan: /local_plan
+
+# === Pure Pursuit 控制参数 (局部规划器内) ===
 control:
   require_start_command: false
   rate: 20.0

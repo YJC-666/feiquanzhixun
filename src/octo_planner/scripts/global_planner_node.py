@@ -26,7 +26,7 @@ def quaternion_from_yaw(yaw):
     return q
 
 
-class JiePathNode:
+class GlobalPlannerNode:
     def __init__(self):
         self.lock = threading.Lock()
 
@@ -34,10 +34,10 @@ class JiePathNode:
         self.goal_topic = rospy.get_param("~topics/goal", "/goal_point")
         self.goal_pose_topic = rospy.get_param("~topics/goal_pose", "/goal_pose")
         self.odom_topic = rospy.get_param("~topics/odom", "/pointlio/odom")
-        self.global_map_cloud_topic = rospy.get_param("~topics/global_map_cloud", rospy.get_param("~topics/map_cloud", "/navigation_map_cloud"))
-        self.local_map_cloud_topic = rospy.get_param("~topics/local_map_cloud", "/local_navigation_map_cloud")
-        self.path_topic = rospy.get_param("~topics/path", "/planned_path")
-        self.path_marker_topic = rospy.get_param("~topics/path_marker", "/planned_path_marker")
+        self.global_map_cloud_topic = rospy.get_param(
+            "~topics/global_map_cloud", rospy.get_param("~topics/map_cloud", "/navigation_map_cloud")
+        )
+        self.path_topic = rospy.get_param("~topics/path", "/global_plan")
         self.selection_marker_topic = rospy.get_param("~topics/selection_marker", "/selection_markers")
         self.status_topic = rospy.get_param("~topics/status", "/web_selection_status")
 
@@ -46,19 +46,27 @@ class JiePathNode:
         self.snap_radius_cells = int(rospy.get_param("~planner/snap_radius_cells", 8))
         self.max_iterations = int(rospy.get_param("~planner/max_iterations", 220000))
         self.robot_radius = float(rospy.get_param("~planner/robot_radius", 0.30))
-        self.obstacle_inflation_radius = float(rospy.get_param("~planner/obstacle_inflation_radius", self.robot_radius))
-        self.obstacle_vertical_min_height = float(rospy.get_param("~planner/obstacle_vertical_min_height", 0.18))
-        self.obstacle_min_height_above_base = float(rospy.get_param("~planner/obstacle_min_height_above_base", 0.10))
-        self.obstacle_max_height_above_base = float(rospy.get_param("~planner/obstacle_max_height_above_base", 2.00))
+        self.obstacle_inflation_radius = float(
+            rospy.get_param("~planner/obstacle_inflation_radius", self.robot_radius)
+        )
+        self.obstacle_vertical_min_height = float(
+            rospy.get_param("~planner/obstacle_vertical_min_height", 0.18)
+        )
+        self.obstacle_min_height_above_base = float(
+            rospy.get_param("~planner/obstacle_min_height_above_base", 0.10)
+        )
+        self.obstacle_max_height_above_base = float(
+            rospy.get_param("~planner/obstacle_max_height_above_base", 2.00)
+        )
         self.replan_on_map_update = bool(rospy.get_param("~planner/replan_on_map_update", True))
-        self.use_odom_start_for_replan = bool(rospy.get_param("~planner/use_odom_start_for_replan", True))
+        self.use_odom_start_for_replan = bool(
+            rospy.get_param("~planner/use_odom_start_for_replan", True)
+        )
         self.search_padding_cells = int(rospy.get_param("~planner/search_padding_cells", 40))
         self.max_path_points = int(rospy.get_param("~planner/max_path_points", 5000))
 
         self.global_map_cells = set()
         self.global_obstacles = set()
-        self.local_map_cells = set()
-        self.local_obstacles = set()
         self.start_point = None
         self.goal_point = None
         self.goal_yaw = None
@@ -67,8 +75,9 @@ class JiePathNode:
         self.last_status_time = rospy.Time(0)
 
         self.path_pub = rospy.Publisher(self.path_topic, Path, queue_size=1, latch=True)
-        self.path_marker_pub = rospy.Publisher(self.path_marker_topic, Marker, queue_size=1, latch=True)
-        self.selection_pub = rospy.Publisher(self.selection_marker_topic, MarkerArray, queue_size=1, latch=True)
+        self.selection_pub = rospy.Publisher(
+            self.selection_marker_topic, MarkerArray, queue_size=1, latch=True
+        )
         self.status_pub = rospy.Publisher(self.status_topic, String, queue_size=10)
 
         rospy.Subscriber(self.start_topic, PointStamped, self.on_start, queue_size=1)
@@ -76,15 +85,13 @@ class JiePathNode:
         rospy.Subscriber(self.goal_pose_topic, PoseStamped, self.on_goal_pose, queue_size=1)
         rospy.Subscriber(self.odom_topic, Odometry, self.on_odom, queue_size=1)
         rospy.Subscriber(self.global_map_cloud_topic, PointCloud2, self.on_global_map_cloud, queue_size=1)
-        rospy.Subscriber(self.local_map_cloud_topic, PointCloud2, self.on_local_map_cloud, queue_size=1)
 
         rospy.loginfo(
-            "jie_path_node ROS1 started. start=%s goal=%s odom=%s global_map=%s local_map=%s path=%s",
+            "global_planner ROS1 started. start=%s goal=%s odom=%s global_map=%s path=%s",
             self.start_topic,
             self.goal_topic,
             self.odom_topic,
             self.global_map_cloud_topic,
-            self.local_map_cloud_topic,
             self.path_topic,
         )
 
@@ -136,38 +143,27 @@ class JiePathNode:
             self.frame_id = msg.header.frame_id.strip("/") or self.frame_id
             self.global_map_cells = map_cells
             self.global_obstacles = obstacles
-            should_replan = self.replan_on_map_update and self.start_point is not None and self.goal_point is not None
+            should_replan = (
+                self.replan_on_map_update
+                and self.start_point is not None
+                and self.goal_point is not None
+            )
         rospy.loginfo_throttle(
             1.0,
-            "jie_path_node: 全局点云地图已更新：%d 个地图方格，%d 个全局障碍方格",
+            "global_planner: global map updated: %d map cells, %d obstacle cells",
             len(map_cells),
             len(obstacles),
         )
         if should_replan:
-            self.try_plan(use_current_odom_start=True)
-
-    def on_local_map_cloud(self, msg):
-        map_cells, obstacles = self.cloud_to_map_and_obstacle_cells(msg)
-        with self.lock:
-            self.frame_id = msg.header.frame_id.strip("/") or self.frame_id
-            self.local_map_cells = map_cells
-            self.local_obstacles = obstacles
-            should_replan = self.replan_on_map_update and self.start_point is not None and self.goal_point is not None
-        rospy.loginfo_throttle(
-            1.0,
-            "jie_path_node: 局部避障点云已更新：%d 个局部地图方格，%d 个局部障碍方格",
-            len(map_cells),
-            len(obstacles),
-        )
-        if should_replan:
-            rospy.loginfo("jie_path_node: 局部障碍更新触发重规划，局部障碍 %d 格", len(obstacles))
             self.try_plan(use_current_odom_start=True)
 
     def on_start(self, msg):
         with self.lock:
             self.start_point = Point(x=msg.point.x, y=msg.point.y, z=msg.point.z)
             self.frame_id = msg.header.frame_id.strip("/") or self.frame_id
-        self.publish_status("起点已设置，等待目标点" if self.goal_point is None else "起点已更新，重新规划")
+        self.publish_status(
+            "起点已设置，等待目标点" if self.goal_point is None else "起点已更新，重新规划"
+        )
         self.publish_selection()
         self.try_plan()
 
@@ -177,7 +173,7 @@ class JiePathNode:
             self.frame_id = msg.header.frame_id.strip("/") or self.frame_id
             self.goal_yaw = None
         self.ensure_start_from_odom()
-        self.publish_status("目标点已设置，开始规划")
+        self.publish_status("目标点已设置，开始全局路径规划")
         self.publish_selection()
         self.try_plan()
 
@@ -191,7 +187,7 @@ class JiePathNode:
             self.goal_yaw = yaw_from_quaternion(msg.pose.orientation)
             self.frame_id = msg.header.frame_id.strip("/") or self.frame_id
         self.ensure_start_from_odom()
-        self.publish_status("目标姿态已设置，开始规划")
+        self.publish_status("目标姿态已设置，开始全局路径规划")
         self.publish_selection()
         self.try_plan()
 
@@ -213,8 +209,7 @@ class JiePathNode:
             frame_id = self.frame_id
             resolution = self.resolution
             global_map_cells = set(self.global_map_cells)
-            local_map_cells = set(self.local_map_cells)
-            obstacle_cells = set(self.global_obstacles) | set(self.local_obstacles)
+            obstacle_cells = set(self.global_obstacles)
             goal_yaw = self.goal_yaw
 
         start = stored_start
@@ -227,7 +222,7 @@ class JiePathNode:
             self.publish_status("规划失败：还没有收到全局点云地图，无法生成全局路径")
             return
 
-        planning_cells = global_map_cells | local_map_cells | obstacle_cells
+        planning_cells = global_map_cells | obstacle_cells
         blocked = self.build_blocked_cells(obstacle_cells, resolution)
         start_cell_raw = self.point_to_cell(start.x, start.y, resolution)
         goal_cell_raw = self.point_to_cell(goal.x, goal.y, resolution)
@@ -235,7 +230,7 @@ class JiePathNode:
         start_cell = self.snap_free_cell(start_cell_raw, blocked, bounds)
         goal_cell = self.snap_free_cell(goal_cell_raw, blocked, bounds)
         if start_cell is None or goal_cell is None:
-            self.publish_status("规划失败：起点或目标点落在全局/局部膨胀障碍方格内，附近找不到空位")
+            self.publish_status("规划失败：起点或目标点落在全局障碍方格内，附近找不到空位")
             return
 
         blocked.discard(start_cell)
@@ -244,10 +239,10 @@ class JiePathNode:
         cells = self.astar(start_cell, goal_cell, blocked, bounds)
         if not cells:
             if use_current_odom_start:
-                self.publish_status("局部重规划暂时被动态障碍切断：保留上一条全局路径，交给局部避障减速/绕行")
+                self.publish_status("全局重规划暂时被障碍切断，保留上一条全局路径")
             else:
                 self.publish_empty_path(frame_id)
-                self.publish_status("规划失败：全局路径范围内被局部/全局障碍切断，没有可绕行路径")
+                self.publish_status("规划失败：全局路径范围内被障碍切断，没有可绕行路径")
             return
 
         if len(cells) > self.max_path_points:
@@ -257,8 +252,7 @@ class JiePathNode:
         path_z = start.z if math.isfinite(start.z) else 0.0
         path = self.cells_to_path(cells, frame_id, resolution, goal_yaw, path_z)
         self.path_pub.publish(path)
-        self.path_marker_pub.publish(self.path_to_marker(path))
-        self.publish_status("规划成功：%d 个路径点，全局导航 + 局部避障" % len(path.poses))
+        self.publish_status("全局规划成功：%d 个路径点" % len(path.poses))
 
     def snap_free_cell(self, raw, blocked, bounds):
         if raw not in blocked and self.cell_in_bounds(raw, bounds):
@@ -284,7 +278,11 @@ class JiePathNode:
     def build_search_bounds(self, occupied, start, goal):
         padding = max(
             self.search_padding_cells,
-            self.snap_radius_cells + int(math.ceil(max(self.robot_radius, self.obstacle_inflation_radius) / max(1e-6, self.resolution))) + 2,
+            self.snap_radius_cells
+            + int(
+                math.ceil(max(self.robot_radius, self.obstacle_inflation_radius) / max(1e-6, self.resolution))
+            )
+            + 2,
         )
         xs = [cell[0] for cell in occupied] + [start[0], goal[0]]
         ys = [cell[1] for cell in occupied] + [start[1], goal[1]]
@@ -327,14 +325,19 @@ class JiePathNode:
             for neighbor, move_cost, dx, dy in self.neighbors(current):
                 if neighbor in closed or neighbor in blocked or not self.cell_in_bounds(neighbor, bounds):
                     continue
-                if dx and dy and ((current[0] + dx, current[1]) in blocked or (current[0], current[1] + dy) in blocked):
+                if dx and dy and (
+                    (current[0] + dx, current[1]) in blocked
+                    or (current[0], current[1] + dy) in blocked
+                ):
                     continue
                 tentative_g = current_g + move_cost
                 if tentative_g >= g_score.get(neighbor, float("inf")):
                     continue
                 came_from[neighbor] = current
                 g_score[neighbor] = tentative_g
-                heapq.heappush(open_heap, (tentative_g + self.heuristic(neighbor, goal), tentative_g, neighbor))
+                heapq.heappush(
+                    open_heap, (tentative_g + self.heuristic(neighbor, goal), tentative_g, neighbor)
+                )
         return []
 
     @staticmethod
@@ -388,28 +391,6 @@ class JiePathNode:
         path.header.stamp = rospy.Time.now()
         path.header.frame_id = frame_id
         self.path_pub.publish(path)
-        marker = Marker()
-        marker.header = path.header
-        marker.ns = "planned_path"
-        marker.id = 1
-        marker.action = Marker.DELETE
-        self.path_marker_pub.publish(marker)
-
-    def path_to_marker(self, path):
-        marker = Marker()
-        marker.header = path.header
-        marker.ns = "planned_path"
-        marker.id = 1
-        marker.type = Marker.LINE_STRIP
-        marker.action = Marker.ADD
-        marker.pose.orientation.w = 1.0
-        marker.scale.x = 0.06
-        marker.color.r = 0.10
-        marker.color.g = 0.62
-        marker.color.b = 1.00
-        marker.color.a = 0.95
-        marker.points = [pose.pose.position for pose in path.poses]
-        return marker
 
     def publish_selection(self):
         with self.lock:
@@ -420,13 +401,23 @@ class JiePathNode:
             goal_yaw = self.goal_yaw
         array = MarkerArray()
         if start is not None:
-            array.markers.append(self.make_arrow_marker(frame_id, start, start_yaw, 0, "start_heading", (0.15, 0.85, 1.0, 0.95)))
-            array.markers.append(self.make_cube_marker(frame_id, start, 2, "start_point", (0.15, 0.85, 1.0, 0.95)))
+            array.markers.append(
+                self.make_arrow_marker(frame_id, start, start_yaw, 0, "start_heading", (0.15, 0.85, 1.0, 0.95))
+            )
+            array.markers.append(
+                self.make_cube_marker(frame_id, start, 2, "start_point", (0.15, 0.85, 1.0, 0.95))
+            )
         if goal is not None:
             if goal_yaw is None and start is not None:
                 goal_yaw = math.atan2(goal.y - start.y, goal.x - start.x)
-            array.markers.append(self.make_arrow_marker(frame_id, goal, goal_yaw or 0.0, 1, "goal_heading", (1.0, 0.45, 0.18, 0.95)))
-            array.markers.append(self.make_cube_marker(frame_id, goal, 3, "goal_point", (1.0, 0.45, 0.18, 0.95)))
+            array.markers.append(
+                self.make_arrow_marker(
+                    frame_id, goal, goal_yaw or 0.0, 1, "goal_heading", (1.0, 0.45, 0.18, 0.95)
+                )
+            )
+            array.markers.append(
+                self.make_cube_marker(frame_id, goal, 3, "goal_point", (1.0, 0.45, 0.18, 0.95))
+            )
         self.selection_pub.publish(array)
 
     def make_arrow_marker(self, frame_id, point, yaw, marker_id, namespace, color):
@@ -444,7 +435,11 @@ class JiePathNode:
         marker.color.r, marker.color.g, marker.color.b, marker.color.a = color
         marker.points = [
             Point(x=point.x, y=point.y, z=point.z + 0.18),
-            Point(x=point.x + math.cos(yaw) * 0.55, y=point.y + math.sin(yaw) * 0.55, z=point.z + 0.18),
+            Point(
+                x=point.x + math.cos(yaw) * 0.55,
+                y=point.y + math.sin(yaw) * 0.55,
+                z=point.z + 0.18,
+            ),
         ]
         return marker
 
@@ -476,12 +471,12 @@ class JiePathNode:
             and self.last_status_time.to_sec() > 0.0
             and (now - self.last_status_time).to_sec() < 1.0
         ):
-            rospy.loginfo_throttle(1.0, "jie_path_node: %s", text)
+            rospy.loginfo_throttle(1.0, "global_planner: %s", text)
             return
         self.last_status_text = text
         self.last_status_time = now
         self.status_pub.publish(String(data=text))
-        rospy.loginfo_throttle(1.0, "jie_path_node: %s", text)
+        rospy.loginfo_throttle(1.0, "global_planner: %s", text)
 
     @staticmethod
     def point_to_cell(x, y, resolution):
@@ -501,8 +496,8 @@ class JiePathNode:
 
 
 def main():
-    rospy.init_node("jie_path_node")
-    JiePathNode()
+    rospy.init_node("global_planner")
+    GlobalPlannerNode()
     rospy.spin()
 
 

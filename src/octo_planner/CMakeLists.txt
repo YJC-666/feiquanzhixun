@@ -24,6 +24,8 @@ catkin_install_python(
   PROGRAMS
     scripts/jie_path_node.py
     scripts/d1_controller_node.py
+    scripts/global_planner_node.py
+    scripts/local_planner_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

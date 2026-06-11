@@ -17,7 +17,7 @@ control:
   rate: 20.0
   command_timeout: 0.35
   cloud_timeout: 0.8
-  stop_without_cloud: true
+  stop_without_cloud: false
   max_linear_x: 0.35
   max_linear_y: 0.0
   max_angular_z: 0.8

@@ -914,8 +914,8 @@ function setPath(pathMsg) {
     false,
   );
   const material = new THREE.MeshStandardMaterial({
-    color: 0xb067ff,
-    emissive: 0x4f2586,
+    color: 0x58ef74,
+    emissive: 0x266b2e,
     roughness: 0.28,
     metalness: 0.08,
   });
@@ -952,8 +952,8 @@ function setManualPredictionPath(pathMsg) {
     false,
   );
   const material = new THREE.MeshStandardMaterial({
-    color: 0xffbd45,
-    emissive: 0x7a3b00,
+    color: 0xffa040,
+    emissive: 0x7a4000,
     roughness: 0.24,
     metalness: 0.05,
   });
@@ -964,8 +964,8 @@ function setManualPredictionPath(pathMsg) {
   const endpoint = new THREE.Mesh(
     new THREE.SphereGeometry(Math.max(voxelSize * 0.45, 0.10), 20, 12),
     new THREE.MeshStandardMaterial({
-      color: 0xffe45c,
-      emissive: 0x8a6400,
+      color: 0xffcc60,
+      emissive: 0x6a4800,
       roughness: 0.22,
       metalness: 0.04,
     }),
@@ -1638,11 +1638,6 @@ function connectRosbridge(url = wsInput.value.trim(), manual = false) {
       name: "/navigation/control_mode",
       messageType: "std_msgs/String",
     });
-    localAvoidanceConfigTopic = new ROSLIB.Topic({
-      ros,
-      name: "/dog_safety_mux/local_avoidance_config",
-      messageType: "std_msgs/String",
-    });
     publishGoalTolerance(goalToleranceMeters);
     publishNavigationControlMode(navigationControlMode);
     publishLocalAvoidanceSettings(localAvoidanceSettings || defaultLocalAvoidanceSettings);
@@ -1691,19 +1686,19 @@ function connectRosbridge(url = wsInput.value.trim(), manual = false) {
     });
     selectionTopic.subscribe(setSelectionMarkers);
 
-    const pathTopic = new ROSLIB.Topic({
+    const globalPathTopic = new ROSLIB.Topic({
       ros,
-      name: "/planned_path",
+      name: "/global_plan",
       messageType: "nav_msgs/Path",
     });
-    pathTopic.subscribe(setPath);
+    globalPathTopic.subscribe(setPath);
 
-    const manualPredictionTopic = new ROSLIB.Topic({
+    const localPathTopic = new ROSLIB.Topic({
       ros,
-      name: "/manual_prediction_path",
+      name: "/local_plan",
       messageType: "nav_msgs/Path",
     });
-    manualPredictionTopic.subscribe(setManualPredictionPath);
+    localPathTopic.subscribe(setManualPredictionPath);
 
     const trackingPointTopic = new ROSLIB.Topic({
       ros,

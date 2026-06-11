@@ -155,6 +155,7 @@
       gap: 14px;
       align-items: center;
     }
+    .joystick.disabled { opacity: 0.35; pointer-events: none; }
     .joystick {
       width: 138px;
       height: 138px;
@@ -183,6 +184,15 @@
       pointer-events: none;
     }
     .control-stack { display: grid; gap: 8px; }
+    .mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .mode-btn {
+      padding: 9px 6px; border-radius: 10px; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04); color: var(--muted);
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .mode-btn:hover { border-color: rgba(93,183,255,0.6); color: var(--text); }
+    .mode-btn.active { background: rgba(93,183,255,0.22); border-color: rgba(93,183,255,0.58); color: var(--blue); }
+    .mode-btn.auto-active { background: rgba(99,230,167,0.18); border-color: rgba(99,230,167,0.58); color: var(--green); }
     .control-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .metric {
       border: 1px solid var(--line);
@@ -272,13 +282,13 @@
         <div class="status-row">
           <span class="pill"><span class="dot" id="safe-dot"></span><span id="safety-state">等待安全层</span></span>
           <span class="pill">输出 <code id="output-topic">/cmd_vel</code></span>
-          <span class="pill">状态 <code id="status-topic">/dog_safety_mux/status</code></span>
+          <span class="pill">状态 <code id="status-topic">/web_selection_status</code></span>
         </div>
         <div class="topic-list">
           <div>点云 <code id="cloud-topic">/pointlio/cloud_registered</code></div>
           <div>里程计 <code id="odom-topic">/pointlio/odom</code></div>
           <div>相机 <code id="camera-topic">/camera/image/compressed</code></div>
-          <div>路径 <code id="path-topic">/planned_path</code></div>
+          <div>路径 <code id="path-topic">/global_plan</code></div>
         </div>
         <div class="module-grid" aria-label="模块互联状态">
           <div class="module-card">
@@ -293,12 +303,12 @@
           </div>
           <div class="module-card">
             <div class="module-header"><span id="module-nav-dot" class="dot"></span><span>导航规划</span></div>
-            <div id="module-nav-topic" class="module-topic">/planned_path</div>
+            <div id="module-nav-topic" class="module-topic">/global_plan</div>
             <div id="module-nav-value" class="module-value">等待路径</div>
           </div>
           <div class="module-card">
             <div class="module-header"><span id="module-safe-dot" class="dot"></span><span>避障裁剪</span></div>
-            <div id="module-safe-topic" class="module-topic">/dog_safety_mux/status</div>
+            <div id="module-safe-topic" class="module-topic">/web_selection_status</div>
             <div id="module-safe-value" class="module-value">等待安全层</div>
           </div>
           <div class="module-card">
@@ -319,6 +329,10 @@
           <div id="joy-knob" class="knob"></div>
         </div>
         <div class="control-stack">
+          <div class="mode-row">
+            <button id="mode-manual-btn" class="mode-btn active">手动控制</button>
+            <button id="mode-auto-btn" class="mode-btn">自动导航</button>
+          </div>
           <div class="control-row">
             <div class="metric"><span>前后 x</span><strong id="vx-value">0.000</strong></div>
             <div class="metric"><span>横移 y</span><strong id="vy-value">0.000</strong></div>
@@ -366,16 +380,17 @@
         manual_cmd: "/web_cmd_vel",
         start_navigation: "/start_navigation",
         stop_navigation: "/stop_navigation",
-        safety_status: "/dog_safety_mux/status",
+        safety_status: "/web_selection_status",
         unitree_status: "/unitree_highlevel/status",
         output_cmd: "/cmd_vel",
         nav_cmd: "/nav_cmd_vel",
-        planned_path: "/planned_path",
+        planned_path: "/global_plan",
         cloud: "/pointlio/cloud_registered",
         odom: "/pointlio/odom",
         camera: "/camera/image/compressed",
         octomap_occupied: "/octomap_occupied_markers",
         traversable_cells: "/traversable_cells_markers",
+        control_mode: "/navigation/control_mode",
       },
       joystick: {
         max_linear_x: 0.30,
@@ -390,6 +405,7 @@
       config: JSON.parse(JSON.stringify(defaults)),
       ros: null,
       manualTopic: null,
+      modeTopic: null,
       startTopic: null,
       stopTopic: null,
       safetyTopic: null,
@@ -400,6 +416,7 @@
       vx: 0,
       vy: 0,
       wz: 0,
+      controlMode: "manual",
       lastPublishMs: 0,
       repeatTimer: null,
     };
@@ -635,6 +652,8 @@
 
       const topics = state.config.topics;
       state.manualTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.manual_cmd, messageType: "geometry_msgs/Twist" });
+      state.modeTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.control_mode, messageType: "std_msgs/String" });
+      state.modeTopic.publish(new ROSLIB.Message({ data: state.controlMode }));
       state.startTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.start_navigation, messageType: "std_msgs/Bool" });
       state.stopTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.stop_navigation, messageType: "std_msgs/Bool" });
       state.safetyTopic = new ROSLIB.Topic({ ros: state.ros, name: topics.safety_status, messageType: "std_msgs/String" });
@@ -745,15 +764,18 @@
     }
 
     joyPad.addEventListener("pointerdown", (event) => {
+      if (state.controlMode !== "manual") return;
       state.joystickPointerId = event.pointerId;
       joyPad.setPointerCapture(event.pointerId);
       updateJoystickFromEvent(event);
     });
     joyPad.addEventListener("pointermove", (event) => {
+      if (state.controlMode !== "manual") return;
       if (state.joystickPointerId !== event.pointerId) return;
       updateJoystickFromEvent(event);
     });
     joyPad.addEventListener("pointerup", (event) => {
+      if (state.controlMode !== "manual") return;
       if (state.joystickPointerId !== event.pointerId) return;
       state.joystickPointerId = null;
       state.vx = 0;
@@ -765,6 +787,7 @@
     joyPad.addEventListener("pointercancel", publishZero);
 
     yawSlider.addEventListener("input", () => {
+      if (state.controlMode !== "manual") return;
       state.wz = Number(yawSlider.value) / 100 * state.config.joystick.max_angular_z;
       publishManual(true);
       startRepeat();
@@ -773,8 +796,35 @@
       if (Number(yawSlider.value) === 0) stopRepeatIfIdle();
     });
 
+    function switchMode(mode) {
+      if (mode === state.controlMode) return;
+      state.controlMode = mode;
+      if (mode === "manual") {
+        $("mode-manual-btn").classList.add("active");
+        $("mode-manual-btn").classList.remove("auto-active");
+        $("mode-auto-btn").classList.remove("active", "auto-active");
+        joyPad.classList.remove("disabled");
+        yawSlider.disabled = false;
+      } else {
+        $("mode-auto-btn").classList.add("active", "auto-active");
+        $("mode-manual-btn").classList.remove("active", "auto-active");
+        joyPad.classList.add("disabled");
+        yawSlider.disabled = true;
+        publishZero();
+      }
+      if (state.modeTopic) {
+        state.modeTopic.publish(new ROSLIB.Message({ data: mode }));
+      }
+    }
+
+    $("mode-manual-btn").addEventListener("click", () => switchMode("manual"));
+    $("mode-auto-btn").addEventListener("click", () => switchMode("auto"));
+
     $("connect-btn").addEventListener("click", connectRos);
-    $("zero-btn").addEventListener("click", publishZero);
+    $("zero-btn").addEventListener("click", () => {
+      if (state.controlMode !== "manual") return;
+      publishZero();
+    });
     $("stop-nav-btn").addEventListener("click", () => {
       if (state.stopTopic) state.stopTopic.publish(new ROSLIB.Message({ data: true }));
       publishZero();

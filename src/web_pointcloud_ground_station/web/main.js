@@ -85,6 +85,7 @@ const ui = {
   zMax: $("z-max"),
   zMaxValue: $("z-max-value"),
   eventLog: $("event-log"),
+  safetyStatus: $("safety-status"),
 };
 
 const state = {
@@ -123,6 +124,9 @@ const state = {
   showWire: true,
   connected: false,
   needsRenderUpdate: false,
+  localPlanner: {
+    group: null,
+  },
 };
 
 function defaultRosbridgeUrl() {
@@ -276,6 +280,9 @@ const axes = new THREE.AxesHelper(1.2);
 scene.add(axes);
 
 const robotGroup = buildRobotMarker();
+const plannerVizGroup = new THREE.Group();
+plannerVizGroup.name = "plannerViz";
+robotGroup.add(plannerVizGroup);
 scene.add(robotGroup);
 
 const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -405,7 +412,34 @@ function subscribeAll() {
   });
   cameraTopic.subscribe(handleCameraImage);
 
-  state.subscriptions = [cloudTopic, odomTopic, cameraTopic];
+  const candidatesTopic = new ROSLIB.Topic({
+    ros: state.ros,
+    name: "/local_planner_candidates",
+    messageType: "visualization_msgs/MarkerArray",
+    throttle_rate: 30,
+    queue_length: 1,
+  });
+  candidatesTopic.subscribe(handleCandidates);
+
+  const safetyBoxTopic = new ROSLIB.Topic({
+    ros: state.ros,
+    name: "/local_planner_safety_box",
+    messageType: "visualization_msgs/Marker",
+    throttle_rate: 30,
+    queue_length: 1,
+  });
+  safetyBoxTopic.subscribe(handleSafetyBox);
+
+  const statusTopic = new ROSLIB.Topic({
+    ros: state.ros,
+    name: "/dog_safety_mux/status",
+    messageType: "std_msgs/String",
+    throttle_rate: 10,
+    queue_length: 1,
+  });
+  statusTopic.subscribe(handleSafetyStatus);
+
+  state.subscriptions = [cloudTopic, odomTopic, cameraTopic, candidatesTopic, safetyBoxTopic, statusTopic];
   logEvent(`订阅 ${state.topics.cloud} / ${state.topics.odom} / ${state.topics.camera}`);
 }
 
@@ -501,6 +535,104 @@ function handlePointCloud(msg) {
   }
 
   state.needsRenderUpdate = true;
+}
+
+function handleCandidates(msg) {
+  const group = plannerVizGroup;
+  if (!group) return;
+
+  while (group.children.length > 0) {
+    const child = group.children[0];
+    group.remove(child);
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) child.material.dispose();
+  }
+
+  const markers = msg.markers;
+  if (!markers || !markers.length) return;
+
+  markers.forEach((marker) => {
+    if (marker.type !== 4) return;
+    const pts = marker.points;
+    if (!pts || pts.length < 2) return;
+
+    const positions = new Float32Array(pts.length * 3);
+    for (let i = 0; i < pts.length; i += 1) {
+      positions[i * 3] = Number(pts[i].x) || 0;
+      positions[i * 3 + 1] = Number(pts[i].y) || 0;
+      positions[i * 3 + 2] = Number(pts[i].z) || 0;
+    }
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+    const r = Number(marker.color?.r) || 1;
+    const g = Number(marker.color?.g) || 1;
+    const b = Number(marker.color?.b) || 1;
+    const a = Number(marker.color?.a) || 0.7;
+
+    const mat = new THREE.LineBasicMaterial({
+      color: new THREE.Color(r, g, b),
+      transparent: a < 1,
+      opacity: a,
+      linewidth: 1,
+      depthTest: true,
+    });
+
+    const line = new THREE.Line(geom, mat);
+    group.add(line);
+  });
+}
+
+function handleSafetyBox(msg) {
+  const group = plannerVizGroup;
+  if (!group) return;
+
+  const existing = group.getObjectByName("safetyBoxWire");
+  if (existing) {
+    group.remove(existing);
+    if (existing.geometry) existing.geometry.dispose();
+    if (existing.material) existing.material.dispose();
+  }
+
+  const sx = Number(msg.scale?.x) || 1;
+  const sy = Number(msg.scale?.y) || 1;
+  const sz = Number(msg.scale?.z) || 1;
+  const px = Number(msg.pose?.position?.x) || 0;
+  const py = Number(msg.pose?.position?.y) || 0;
+  const pz = Number(msg.pose?.position?.z) || 0;
+
+  const boxGeom = new THREE.BoxGeometry(sx, sy, sz);
+  const edgeGeom = new THREE.EdgesGeometry(boxGeom);
+  boxGeom.dispose();
+
+  const mat = new THREE.LineBasicMaterial({
+    color: 0xffff00,
+    transparent: true,
+    opacity: 0.45,
+    linewidth: 1,
+    depthTest: true,
+  });
+
+  const wireframe = new THREE.LineSegments(edgeGeom, mat);
+  wireframe.name = "safetyBoxWire";
+  wireframe.position.set(px, py, pz);
+  group.add(wireframe);
+}
+
+function handleSafetyStatus(msg) {
+  if (!msg || !msg.data) return;
+  const text = String(msg.data);
+  ui.safetyStatus.textContent = text;
+  // color-code: stop/blocked → red, adjust/slow → yellow, clear → green
+  ui.safetyStatus.classList.remove("status-ok", "status-warn", "status-danger");
+  if (/stop|blocked/i.test(text)) {
+    ui.safetyStatus.classList.add("status-danger");
+  } else if (/adjust|slow/i.test(text)) {
+    ui.safetyStatus.classList.add("status-warn");
+  } else {
+    ui.safetyStatus.classList.add("status-ok");
+  }
 }
 
 function shouldSkipForStationaryGate() {

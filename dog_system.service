@@ -1,0 +1,26 @@
+[Unit]
+Description=狗机全系统启动服务
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=orangepi
+Group=orangepi
+WorkingDirectory=/home/orangepi/dog_ws
+ExecStartPre=/bin/sleep 5
+ExecStart=/bin/bash /home/orangepi/dog_ws/start_all.sh
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+Environment="HOME=/home/orangepi"
+Environment="USER=orangepi"
+
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
